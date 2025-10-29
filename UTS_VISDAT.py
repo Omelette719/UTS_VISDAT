@@ -74,6 +74,109 @@ st.markdown(
 )
 st.write("") 
 
+# === GAYA TAMBAHAN: Tema SpongeBob ===
+st.markdown("""
+    <style>
+        /* === Background utama === */
+        .stApp {
+            background: linear-gradient(180deg, #FFEE88 0%, #FFF8D6 50%, #FFD54A 100%);
+            background-attachment: fixed;
+            color: #222;
+            font-family: 'Trebuchet MS', 'Comic Sans MS', sans-serif;
+        }
+
+        /* === Sidebar === */
+        section[data-testid="stSidebar"] {
+            background: linear-gradient(180deg, #FCE77D 0%, #E2B664 100%);
+            border-right: 3px solid #C6893F;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+        }
+
+        /* Judul Sidebar */
+        section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {
+            color: #3B2004;
+            text-shadow: 1px 1px 0 #FFF3C4;
+        }
+
+        /* Pilihan dropdown dan checkbox */
+        div[data-baseweb="select"] > div, .stCheckbox {
+            background-color: #FFF8E1 !important;
+            border-radius: 8px;
+            border: 1px solid #C6893F !important;
+        }
+
+        /* Tombol */
+        .stButton > button {
+            background: linear-gradient(180deg, #F6C90E 0%, #F9A602 100%);
+            color: black;
+            font-weight: 600;
+            border-radius: 12px;
+            border: 2px solid #3B2004;
+            box-shadow: 0 3px 0 #3B2004;
+            transition: 0.2s ease;
+        }
+        .stButton > button:hover {
+            background: linear-gradient(180deg, #F9A602 0%, #F6C90E 100%);
+            transform: translateY(-2px);
+        }
+
+        /* Metric box */
+        div[data-testid="stMetricValue"] {
+            color: #3B2004 !important;
+        }
+        div[data-testid="stMetricDelta"] {
+            color: #D62828 !important;
+        }
+        div[data-testid="stMetric"] {
+            background-color: #FFF3C4;
+            border-radius: 12px;
+            padding: 10px 15px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        /* Chart container */
+        .js-plotly-plot {
+            border-radius: 12px;
+            box-shadow: 0 4px 18px rgba(0,0,0,0.3);
+            background-color: #FFFDF3 !important;
+            padding: 8px;
+        }
+
+        /* Scrollbar SpongeBob-style */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #C6893F;
+            border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #A05B2C;
+        }
+        ::-webkit-scrollbar-track {
+            background: #FFF8D6;
+        }
+
+        /* Footer */
+        .stMarkdown div {
+            text-align: center;
+        }
+
+        /* Garis pemisah */
+        hr, .stMarkdown hr {
+            border-top: 3px dashed #A05B2C;
+        }
+
+        /* Tooltip, tabel, dan teks info */
+        [data-testid="stMarkdownContainer"] {
+            color: #222;
+        }
+        .stAlert {
+            border-radius: 12px;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # === PEMBACAAN DAN PEMBERSIHAN DATA ===
 @st.cache_data(ttl=300)
 def load_and_clean(path="spongebob_episodes.csv"):
