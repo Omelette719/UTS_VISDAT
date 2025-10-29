@@ -190,13 +190,22 @@ else:
 if selected_season == "All":
     st.subheader("🌊 Gambaran Umum Semua Season")
 
-    c1, c2 = st.columns([1, 2])
-
-    with c1:
+    # Baris pertama: metric dan chart trend
+    r1c1, r1c2 = st.columns([1, 2])
+    with r1c1:
         st.metric("Total Season", df_filtered["Season"].nunique())
         st.metric("Total Episode", len(df_filtered))
         st.metric("Rata-rata Penonton (juta)", f"{df_filtered['US Viewers'].mean():.2f}")
-
+    with r1c2:
+        trend = df_filtered.groupby("Season", as_index=False)["US Viewers"].mean()
+        fig_trend = px.line(trend, x="Season", y="US Viewers", markers=True,
+                            title="Rata-rata Penonton per Season",
+                            color_discrete_sequence=[BKB_LIGHT])
+        st.plotly_chart(fig_trend, use_container_width=True)
+    
+    # Baris kedua: karakter global dan penulis global
+    r2c1, r2c2 = st.columns(2)
+    with r2c1:
         chars = df_filtered.explode("Characters_list")["Characters_list"].dropna()
         if not chars.empty:
             top5 = chars.value_counts().nlargest(5)
@@ -207,15 +216,7 @@ if selected_season == "All":
                 color_discrete_sequence=px.colors.qualitative.Pastel
             )
             st.plotly_chart(fig, use_container_width=True)
-
-    with c2:
-        trend = df_filtered.groupby("Season", as_index=False)["US Viewers"].mean()
-        fig_trend = px.line(trend, x="Season", y="US Viewers", markers=True,
-                            title="Rata-rata Penonton per Season",
-                            color_discrete_sequence=[BKB_LIGHT])
-        fig_trend.update_layout(xaxis=dict(dtick=1))
-        st.plotly_chart(fig_trend, use_container_width=True)
-
+    with r2c2:
         top_writers = df_filtered.explode("Writers_list")["Writers_list"].value_counts().nlargest(10)
         if not top_writers.empty:
             dfw = top_writers.reset_index()
