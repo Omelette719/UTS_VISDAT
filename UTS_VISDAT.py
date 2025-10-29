@@ -21,6 +21,12 @@ def load_data():
 
 df = load_data()
 
+df["U.S. viewers (millions)"] = (
+    pd.to_numeric(df["U.S. viewers (millions)"], errors="coerce")
+)
+
+df["U.S. viewers (millions)"] = pd.to_numeric(df["U.S. viewers (millions)"], errors="coerce").fillna(0)
+
 # ======== SIDEBAR ========
 st.sidebar.image("https://upload.wikimedia.org/wikipedia/en/3/3b/SpongeBob_SquarePants_character.svg", width=150)
 st.sidebar.title("Filter Bikini Bottom 🏝️")
