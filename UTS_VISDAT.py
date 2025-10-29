@@ -1,98 +1,171 @@
 import streamlit as st
 import pandas as pd
-import altair as alt
 import plotly.express as px
 
-# Konfigurasi halaman
+# ==============================
+# PAGE CONFIGURATION
+# ==============================
 st.set_page_config(
-    page_title="SpongeBob Episodes Dashboard",
+    page_title="SpongeBob Data Dashboard",
     page_icon="🧽",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-alt.themes.enable("dark")
+# ==============================
+# LOAD DATA
+# ==============================
+@st.cache_data
+def load_data():
+    df = pd.read_csv("spongebob_episodes.csv")
 
-# Load dataset
-df = pd.read_csv("spongebob_episodes.csv")
+    # --- CLEANING ---
+    df = df.rename(columns={
+        "Season â„–": "Season",
+        "Episode â„–": "Episode",
+        "U.S. viewers (millions)": "US Viewers (millions)",
+        "Running time": "Running Time"
+    })
 
-# Bersihkan data viewers jadi numerik
-df["U.S. viewers (millions)"] = pd.to_numeric(df["U.S. viewers (millions)"], errors="coerce").fillna(0)
+    # ubah tipe data numerik
+    for col in ["Season", "Episode"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
 
-# Sidebar
+    # isi nilai kosong di viewers pakai median
+    if "US Viewers (millions)" in df.columns:
+        df["US Viewers (millions)"] = pd.to_numeric(df["US Viewers (millions)"], errors="coerce")
+        df["US Viewers (millions)"].fillna(df["US Viewers (millions)"].median(), inplace=True)
+
+    # isi nilai kosong running time
+    if "Running Time" in df.columns:
+        df["Running Time"].fillna(df["Running Time"].mode()[0], inplace=True)
+
+    return df
+
+df = load_data()
+
+# ==============================
+# SIDEBAR FILTERS
+# ==============================
 with st.sidebar:
+    st.image("https://upload.wikimedia.org/wikipedia/en/3/3b/SpongeBob_SquarePants_character.svg", width=120)
     st.title("🧽 SpongeBob Dashboard")
-    st.markdown("### Bikini Bottom Data Explorer")
+    st.markdown("Analisis data episode SpongeBob SquarePants")
 
-    seasons = sorted(df["Season"].unique())
-    selected_season = st.selectbox("Pilih Season", seasons)
+    # filter season
+    season_list = sorted(df["Season"].dropna().unique())
+    selected_season = st.selectbox("Pilih Season:", options=["All"] + list(map(int, season_list)))
 
-    df_season = df[df["Season"] == selected_season]
+    # filter writer
+    if "Storyboard" in df.columns:
+        writers = sorted(df["Storyboard"].dropna().unique().tolist())
+    elif "Creative" in df.columns:
+        writers = sorted(df["Creative"].dropna().unique().tolist())
+    else:
+        writers = []
+    selected_writer = st.selectbox("Pilih Storyboard/Creative:", options=["All"] + writers)
 
-    color_theme_list = ["blues", "viridis", "plasma", "turbo", "magma", "inferno"]
-    selected_color = st.selectbox("Pilih Tema Warna", color_theme_list)
+# ==============================
+# FILTER DATA
+# ==============================
+df_filtered = df.copy()
 
-# ================= METRIK RINGKAS =================
+if selected_season != "All":
+    df_filtered = df_filtered[df_filtered["Season"] == selected_season]
+
+if selected_writer != "All":
+    df_filtered = df_filtered[df_filtered["Storyboard"] == selected_writer]
+
+# ==============================
+# HEADER
+# ==============================
+st.markdown("<h1 style='text-align:center; color:#F4C542;'>🧽 SpongeBob SquarePants Episode Dashboard</h1>", unsafe_allow_html=True)
+st.markdown("<h4 style='text-align:center; color:#22A7F0;'>Visualisasi data untuk memahami pola produksi dan popularitas serial SpongeBob</h4>", unsafe_allow_html=True)
+st.write("")
+
+# ==============================
+# METRICS
+# ==============================
 col1, col2, col3 = st.columns(3)
+total_eps = len(df_filtered)
+unique_season = df_filtered["Season"].nunique()
+avg_viewers = df_filtered["US Viewers (millions)"].mean() if "US Viewers (millions)" in df_filtered.columns else 0
 
-col1.metric("📺 Jumlah Episode", len(df_season))
-col2.metric("⭐ Rata-rata Rating", round(df_season["IMDb"].mean(), 2))
-col3.metric("👀 Rata-rata Penonton (juta)", round(df_season["U.S. viewers (millions)"].mean(), 2))
+col1.metric("Total Episode", total_eps)
+col2.metric("Jumlah Season", unique_season)
+col3.metric("Rata-rata Penonton (juta)", round(avg_viewers, 2))
 
-st.markdown("---")
+st.divider()
 
-# ================= GRAFIK 1: TREND RATING PER EPISODE =================
-st.subheader(f"📊 Rating Tiap Episode - Season {selected_season}")
+# ==============================
+# VISUALISASI 1: BAR CHART (Episode per Season)
+# ==============================
+colA, colB = st.columns((2, 3))
+with colA:
+    st.subheader("📊 Jumlah Episode per Season")
+    bar_data = df.groupby("Season").size().reset_index(name="Jumlah Episode")
+    fig_bar = px.bar(
+        bar_data,
+        x="Season",
+        y="Jumlah Episode",
+        color="Jumlah Episode",
+        color_continuous_scale="sunset",
+        title="Distribusi Episode per Season"
+    )
+    fig_bar.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
+    st.plotly_chart(fig_bar, use_container_width=True)
 
-rating_chart = alt.Chart(df_season).mark_circle(size=100, opacity=0.8).encode(
-    x=alt.X("Episode:O", title="Episode ke-"),
-    y=alt.Y("IMDb:Q", title="Rating IMDb"),
-    tooltip=["Title", "IMDb", "U.S. viewers (millions)"],
-    color=alt.Color("IMDb:Q", scale=alt.Scale(scheme=selected_color))
-).properties(height=400)
+# ==============================
+# VISUALISASI 2: LINE CHART (Rata-rata Penonton)
+# ==============================
+with colB:
+    st.subheader("📈 Tren Rata-rata Penonton per Season")
+    if "US Viewers (millions)" in df.columns:
+        line_data = df.groupby("Season")["US Viewers (millions)"].mean().reset_index()
+        fig_line = px.line(
+            line_data,
+            x="Season",
+            y="US Viewers (millions)",
+            markers=True,
+            color_discrete_sequence=["#22A7F0"]
+        )
+        fig_line.update_traces(line=dict(width=3))
+        fig_line.update_layout(
+            title="Tren Popularitas SpongeBob",
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)"
+        )
+        st.plotly_chart(fig_line, use_container_width=True)
 
-st.altair_chart(rating_chart, use_container_width=True)
+st.divider()
 
-# ================= GRAFIK 2: TREN PENONTON PER SEASON =================
-st.subheader("👁️ Tren Jumlah Penonton per Season")
+# ==============================
+# VISUALISASI 3: PIE CHART (Storyboard / Creative)
+# ==============================
+st.subheader("🎨 Proporsi Episode berdasarkan Storyboard/Creative")
+if "Storyboard" in df.columns:
+    pie_data = df["Storyboard"].value_counts().reset_index()
+    pie_data.columns = ["Storyboard", "Jumlah Episode"]
+    fig_pie = px.pie(
+        pie_data,
+        values="Jumlah Episode",
+        names="Storyboard",
+        color_discrete_sequence=px.colors.sequential.YlOrRd,
+        title="Kontributor Kreatif Teraktif"
+    )
+    fig_pie.update_traces(textinfo="percent+label", pull=[0.05]*len(pie_data))
+    st.plotly_chart(fig_pie, use_container_width=True)
+else:
+    st.warning("Kolom storyboard tidak tersedia di dataset.")
 
-avg_viewers = df.groupby("Season")["U.S. viewers (millions)"].mean().reset_index()
+# ==============================
+# INSIGHT SECTION
+# ==============================
+st.markdown("## 🪸 Insight & Kesimpulan")
+st.write("""
+1. **Season paling produktif** ditunjukkan oleh puncak jumlah episode pada grafik bar.
+2. **Tren penonton menurun pada season tertentu** dapat mengindikasikan perubahan arah kreatif atau jadwal tayang.
+3. **Storyboard artist tertentu** memiliki kontribusi signifikan terhadap total produksi.
+""")
 
-fig = px.line(
-    avg_viewers,
-    x="Season",
-    y="U.S. viewers (millions)",
-    markers=True,
-    color_discrete_sequence=["#FFD700"]
-)
-fig.update_layout(
-    template="plotly_dark",
-    plot_bgcolor="rgba(0,0,0,0)",
-    paper_bgcolor="rgba(0,0,0,0)",
-    title_font_color="#FFD700"
-)
-st.plotly_chart(fig, use_container_width=True)
-
-# ================= TABEL EPISODE =================
-st.subheader(f"📜 Daftar Episode Season {selected_season}")
-
-st.dataframe(
-    df_season,
-    hide_index=True,
-    column_order=("Title", "Original air date", "IMDb", "U.S. viewers (millions)"),
-    column_config={
-        "Title": st.column_config.TextColumn("Judul Episode"),
-        "Original air date": st.column_config.TextColumn("Tanggal Tayang"),
-        "IMDb": st.column_config.ProgressColumn("Rating IMDb", format="%.1f", min_value=0, max_value=10),
-        "U.S. viewers (millions)": st.column_config.NumberColumn("Penonton (juta)", format="%.2f")
-    }
-)
-
-# ================= ABOUT =================
-with st.expander("Tentang Dashboard", expanded=False):
-    st.write("""
-        - 🎬 Data diambil dari SpongeBob episode dataset.
-        - 📈 Menampilkan statistik rating dan penonton tiap season.
-        - 🎨 Tema warna bisa diubah untuk menyesuaikan gaya tampilan.
-        - 🧠 Dibuat untuk keperluan UTS Visualisasi Data.
-    """)
+st.markdown("<p style='text-align:center; color:gray;'>© 2025 SpongeData Analytics — Dibuat untuk UTS Visualisasi Data</p>", unsafe_allow_html=True)
