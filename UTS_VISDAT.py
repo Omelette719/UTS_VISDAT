@@ -305,7 +305,7 @@ if selected_season == "All":
                 st.metric(
                     "Rata-rata Penonton (Tanpa Bintang Tamu)", 
                     f"{val_without_guest:.2f} Juta",
-                    delta=f"{delta_val:+.2f} Juta",
+                    delta=f"{delta_val:-.2f} Juta",
                     delta_color="normal"
                 )
             st.caption("Delta menunjukkan perbedaan antara episode 'Dengan' dan 'Tanpa' Bintang Tamu.")
