@@ -65,7 +65,7 @@ st.markdown(
     <div class="bikini-banner">
         <img src="https://upload.wikimedia.org/wikipedia/en/thumb/2/22/SpongeBob_SquarePants_logo_by_Nickelodeon.svg/512px-SpongeBob_SquarePants_logo_by_Nickelodeon.svg.png" alt="SpongeBob Logo">
         <div class="bikini-title">
-            <h1>SpongeBob Episode Analytics — Bikini Bottom</h1>
+            <h1>SpongeBob Episode Analytics</h1>
             <p>Dashboard interaktif berdasarkan data episode SpongeBob SquarePants.</p>
         </div>
     </div>
