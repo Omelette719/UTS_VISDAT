@@ -79,6 +79,20 @@ if "US Viewers" in df.columns:
         title="📈 Tren Rata-rata Penonton per Season",
         color_discrete_sequence=["#00BFFF"]
     )
+
+    # Highlight season terpilih
+    if selected_season != "All":
+        highlight = viewers_trend[viewers_trend["Season"] == int(selected_season)]
+        fig_line.add_trace(go.Scatter(
+            x=highlight["Season"],
+            y=highlight["US Viewers"],
+            mode="markers+text",
+            marker=dict(size=14, color="red"),
+            text=["⭐ Season Terpilih"],
+            textposition="top center",
+            showlegend=False
+        ))
+
     st.plotly_chart(fig_line, use_container_width=True)
 
 # --- VISUAL 2: Bar Chart (Episode Count per Season) ---
@@ -88,6 +102,16 @@ fig_bar = px.bar(
     color="Jumlah Episode", color_continuous_scale="sunset",
     title="📊 Jumlah Episode per Season"
 )
+
+if selected_season != "All":
+    highlight_season = int(selected_season)
+    fig_bar.add_trace(go.Bar(
+        x=[highlight_season],
+        y=episode_count.loc[episode_count["Season"] == highlight_season, "Jumlah Episode"],
+        marker_color="red",
+        name="Season Terpilih"
+    ))
+
 st.plotly_chart(fig_bar, use_container_width=True)
 
 # --- VISUAL 3: Pie Chart (Kontributor Penulis) ---
