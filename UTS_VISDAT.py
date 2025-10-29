@@ -211,7 +211,7 @@ if selected_season == "All":
             top10 = chars.value_counts().nlargest(10)
             fig = px.pie(
                 names=top10.index,
-                values=top5.values,
+                values=top10.values,
                 title="Top 10 Karakter (Global)",
                 color_discrete_sequence=px.colors.qualitative.Pastel
             )
