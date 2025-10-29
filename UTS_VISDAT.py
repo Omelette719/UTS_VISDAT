@@ -276,7 +276,7 @@ else:
         chars = season_data.explode("Characters_list")["Characters_list"].dropna()
         if not chars.empty:
             topS = chars.value_counts().nlargest(10)
-            figp = px.pie(values=topS.values, names=top3.index,
+            figp = px.pie(values=topS.values, names=topS.index,
                           title="Top 10 Karakter", color_discrete_sequence=px.colors.sequential.Plasma)
             st.plotly_chart(figp, use_container_width=True)
         else:
