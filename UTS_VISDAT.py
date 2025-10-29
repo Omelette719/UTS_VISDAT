@@ -225,10 +225,21 @@ if selected_season == "All":
         writers_series = df.explode("writers_list")["writers_list"].dropna()
         if not writers_series.empty:
             top_writers = writers_series.value_counts().nlargest(10)
-            figw = px.bar(top_writers.reset_index().rename(columns={"index":"Writer", "writers_list":"Count"}), x="Count", y="Writer", orientation="h", title="Top 10 Writers", color="Count")
+            df_writers = top_writers.reset_index()
+            df_writers.columns = ["Writer", "Count"]  # <— ini yang penting
+            figw = px.bar(
+                df_writers,
+                x="Count",
+                y="Writer",
+                orientation="h",
+                title="Top 10 Writers (Global)",
+                color="Count",
+                color_continuous_scale="sunset"
+            )
             st.plotly_chart(figw, use_container_width=True)
         else:
             st.info("Tidak ada data penulis (writers) yang dapat ditampilkan.")
+
 
 else:
     # Season-specific view
