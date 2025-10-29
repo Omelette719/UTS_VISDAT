@@ -178,7 +178,7 @@ with st.sidebar:
     ))
     selected_writer = st.selectbox("Filter berdasarkan Penulis:", ["All"] + all_writers)
 
-    show_runtime = st.checkbox("Tampilkan durasi episode", value=False)
+    show_runtime = True
 
 # === FILTER DATA ===
 if selected_writer != "All":
