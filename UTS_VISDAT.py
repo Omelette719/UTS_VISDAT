@@ -181,7 +181,7 @@ with st.sidebar:
     show_runtime = st.checkbox("Tampilkan durasi episode", value=False)
 
 # === FILTER DATA ===
-if selected_writer != "Semua":
+if selected_writer != "All":
     df_filtered = df[df["Writers_list"].apply(lambda x: selected_writer in x if isinstance(x, list) else False)]
 else:
     df_filtered = df.copy()
