@@ -1,4 +1,3 @@
-# 🧽 UTS_VISDAT_Revisi_v3.py — SpongeBob Episode Analytics (Bikini Bottom Edition + Filter Writer)
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -66,7 +65,7 @@ st.markdown(
     <div class="bikini-banner">
         <img src="https://upload.wikimedia.org/wikipedia/en/thumb/2/22/SpongeBob_SquarePants_logo_by_Nickelodeon.svg/512px-SpongeBob_SquarePants_logo_by_Nickelodeon.svg.png" alt="SpongeBob Logo">
         <div class="bikini-title">
-            <h1>🧽 SpongeBob Episode Analytics — Bikini Bottom</h1>
+            <h1>SpongeBob Episode Analytics — Bikini Bottom</h1>
             <p>Dashboard interaktif berdasarkan data episode SpongeBob SquarePants.</p>
         </div>
     </div>
@@ -164,12 +163,12 @@ def load_and_clean(path="spongebob_episodes.csv"):
 try:
     df = load_and_clean("spongebob_episodes.csv")
 except Exception as e:
-    st.error(f"❌ Error membaca data: {e}")
+    st.error(f"Error membaca data: {e}")
     st.stop()
 
 # === SIDEBAR ===
 with st.sidebar:
-    st.header("🧭 Navigasi")
+    st.header("Navigasi")
 
     season_opts = ["All"] + sorted(df["Season"].dropna().unique().tolist())
     selected_season = st.selectbox("Pilih Season:", season_opts)
@@ -237,7 +236,7 @@ if selected_season == "All":
 else:
     season = int(selected_season)
     season_data = df_filtered[df_filtered["Season"] == season].sort_values("EpisodeOrder")
-    st.subheader(f"🪸 Detail Season {season}")
+    st.subheader(f"Detail Season {season}")
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Jumlah Episode", len(season_data))
@@ -295,7 +294,7 @@ else:
             st.info("Tidak ada data penulis untuk season ini.")
 
     st.markdown("---")
-    st.markdown("### 💡 Insight")
+    st.markdown("### Insight")
     if season_data.empty:
         st.write("Data season kosong — tidak ada insight.")
     else:
@@ -310,6 +309,6 @@ else:
 
 # FOOTER
 st.markdown(
-    "<div style='text-align:center; color:gray; margin-top:18px;'>🌴 Made with ❤️ in Bikini Bottom</div>",
+    "<div style='text-align:center; color:gray; margin-top:18px;'>Made with ❤️ in Bikini Bottom</div>",
     unsafe_allow_html=True
 )
