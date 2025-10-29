@@ -1,4 +1,4 @@
-# 🧽 UTS_VISDAT_Revisi_v2.py — SpongeBob Episode Analytics (Bikini Bottom Edition) (revisi tampilan episode)
+# 🧽 UTS_VISDAT_Revisi_v3.py — SpongeBob Episode Analytics (Bikini Bottom Edition + Filter Writer)
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -32,7 +32,7 @@ st.markdown(
 )
 st.write("")
 
-# === PEMBACAAN DATA ===
+# === PEMBACAAN DAN PEMBERSIHAN DATA ===
 @st.cache_data(ttl=300)
 def load_and_clean(path="spongebob_episodes.csv"):
     encodings = ["utf-8", "latin1", "cp1252"]
@@ -45,17 +45,14 @@ def load_and_clean(path="spongebob_episodes.csv"):
     if df is None:
         raise RuntimeError(f"Gagal membaca file CSV dengan encoding: {encodings}")
 
-    # normalisasi nama kolom
     df.columns = df.columns.str.strip().str.replace("\ufeff", "").str.replace("–", "-")
 
-    # mapping kolom penting
     colmap = {}
     for c in df.columns:
         cl = c.lower()
-        # gunakan heuristik sederhana; sesuai struktur CSV yang kamu berikan
         if "season" in cl:
             colmap[c] = "Season"
-        elif "episode" in cl and "№" in c or "episode" in cl and "no" in cl:
+        elif "episode" in cl and ("№" in c or "no" in cl):
             colmap[c] = "EpisodeRaw"
         elif "writer" in cl:
             colmap[c] = "Writers"
@@ -74,37 +71,26 @@ def load_and_clean(path="spongebob_episodes.csv"):
 
     df.rename(columns=colmap, inplace=True)
 
-    # konversi season & episode
     if "Season" in df.columns:
         df["Season"] = pd.to_numeric(df["Season"], errors="coerce").astype("Int64")
     if "EpisodeRaw" in df.columns:
         df["EpisodeRaw"] = df["EpisodeRaw"].astype(str)
 
-    # konversi tanggal tayang
     if "Airdate" in df.columns:
-        def parse_date(x):
-            try:
-                return pd.to_datetime(x, errors="coerce")
-            except Exception:
-                return pd.NaT
-        df["Airdate"] = df["Airdate"].apply(parse_date)
+        df["Airdate"] = pd.to_datetime(df["Airdate"], errors="coerce")
 
-    # konversi viewers
     if "US Viewers" in df.columns:
         df["US Viewers"] = pd.to_numeric(df["US Viewers"], errors="coerce")
         df["US Viewers"].fillna(df["US Viewers"].median(), inplace=True)
 
-    # parsing list-like kolom (Characters, Writers, Guests)
     def parse_list(s):
         if pd.isna(s): return []
         s = str(s)
-        # coba literal_eval untuk format "['A','B']"
         try:
             val = ast.literal_eval(s)
             if isinstance(val, (list, tuple)):
                 return [str(v).strip() for v in val if str(v).strip()]
         except Exception:
-            # fallback: split by comma
             return [v.strip().strip('"').strip("'") for v in s.split(",") if v.strip()]
         return []
 
@@ -114,7 +100,6 @@ def load_and_clean(path="spongebob_episodes.csv"):
         else:
             df[col + "_list"] = [[] for _ in range(len(df))]
 
-    # running time (konversi menit)
     if "Running Time" in df.columns:
         df["Running Time (min)"] = (
             df["Running Time"]
@@ -123,17 +108,14 @@ def load_and_clean(path="spongebob_episodes.csv"):
             .astype(float)
         )
 
-    # urutan episode per season (berdasarkan file order)
     df["EpisodeOrder"] = df.groupby("Season").cumcount() + 1
 
-    # EpisodeDisplay: Title + (EpisodeRaw) — gunakan nanti di metric/tooltip
     def build_display(row):
         title = row.get("Title") if pd.notna(row.get("Title")) else ""
         epraw = row.get("EpisodeRaw") if pd.notna(row.get("EpisodeRaw")) else ""
         return f"{title} ({epraw})" if title else f"Episode {epraw}"
 
     df["EpisodeDisplay"] = df.apply(build_display, axis=1)
-
     return df
 
 try:
@@ -145,9 +127,22 @@ except Exception as e:
 # === SIDEBAR ===
 with st.sidebar:
     st.header("🧭 Navigasi")
+
     season_opts = ["All"] + sorted(df["Season"].dropna().unique().tolist())
     selected_season = st.selectbox("Pilih Season:", season_opts)
+
+    all_writers = sorted(set(
+        w for sublist in df["Writers_list"].dropna() for w in sublist if isinstance(sublist, list)
+    ))
+    selected_writer = st.selectbox("Filter berdasarkan Penulis:", ["Semua"] + all_writers)
+
     show_runtime = st.checkbox("Tampilkan durasi episode", value=False)
+
+# === FILTER DATA ===
+if selected_writer != "Semua":
+    df_filtered = df[df["Writers_list"].apply(lambda x: selected_writer in x if isinstance(x, list) else False)]
+else:
+    df_filtered = df.copy()
 
 # === TAMPILAN UTAMA ===
 if selected_season == "All":
@@ -156,12 +151,11 @@ if selected_season == "All":
     c1, c2 = st.columns([1, 2])
 
     with c1:
-        st.metric("Total Season", df["Season"].nunique())
-        st.metric("Total Episode", len(df))
-        st.metric("Rata-rata Penonton (juta)", f"{df['US Viewers'].mean():.2f}")
+        st.metric("Total Season", df_filtered["Season"].nunique())
+        st.metric("Total Episode", len(df_filtered))
+        st.metric("Rata-rata Penonton (juta)", f"{df_filtered['US Viewers'].mean():.2f}")
 
-        # Top 5 karakter global (explode dari Characters_list)
-        chars = df.explode("Characters_list")["Characters_list"].dropna()
+        chars = df_filtered.explode("Characters_list")["Characters_list"].dropna()
         if not chars.empty:
             top5 = chars.value_counts().nlargest(5)
             fig = px.pie(
@@ -173,16 +167,14 @@ if selected_season == "All":
             st.plotly_chart(fig, use_container_width=True)
 
     with c2:
-        # Tren rata-rata per season
-        trend = df.groupby("Season", as_index=False)["US Viewers"].mean()
+        trend = df_filtered.groupby("Season", as_index=False)["US Viewers"].mean()
         fig_trend = px.line(trend, x="Season", y="US Viewers", markers=True,
                             title="Rata-rata Penonton per Season",
                             color_discrete_sequence=[BKB_LIGHT])
         fig_trend.update_layout(xaxis=dict(dtick=1))
         st.plotly_chart(fig_trend, use_container_width=True)
 
-        # Top writer global
-        top_writers = df.explode("Writers_list")["Writers_list"].value_counts().nlargest(10)
+        top_writers = df_filtered.explode("Writers_list")["Writers_list"].value_counts().nlargest(10)
         if not top_writers.empty:
             dfw = top_writers.reset_index()
             dfw.columns = ["Writer", "Count"]
@@ -191,27 +183,23 @@ if selected_season == "All":
                           color="Count", color_continuous_scale="sunset")
             st.plotly_chart(figw, use_container_width=True)
 
-    # Global insight: tambahkan Episode (Title (EpisodeRaw))
     st.markdown("---")
     try:
-        best_idx = df["US Viewers"].idxmax()
-        best_row = df.loc[best_idx]
-        best_display = best_row["EpisodeDisplay"]  # already "Title (EpisodeRaw)"
-        st.markdown(f"**Episode paling populer (seluruh dataset):** {best_display} → **{best_row['US Viewers']:.2f} juta**")
+        best_idx = df_filtered["US Viewers"].idxmax()
+        best_row = df_filtered.loc[best_idx]
+        st.markdown(f"**Episode paling populer:** {best_row['EpisodeDisplay']} → **{best_row['US Viewers']:.2f} juta**")
     except Exception:
         st.info("Tidak ada data viewers yang cukup untuk insight global.")
 
 else:
-    # per-season view
     season = int(selected_season)
-    season_data = df[df["Season"] == season].sort_values("EpisodeOrder")
+    season_data = df_filtered[df_filtered["Season"] == season].sort_values("EpisodeOrder")
     st.subheader(f"🪸 Detail Season {season}")
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Jumlah Episode", len(season_data))
     col2.metric("Rata-rata Penonton (juta)", f"{season_data['US Viewers'].mean():.2f}")
 
-    # Episode terpopuler: tampilkan Title (EpisodeRaw)
     if not season_data.empty and season_data["US Viewers"].notna().any():
         top_idx = season_data["US Viewers"].idxmax()
         top_row = season_data.loc[top_idx]
@@ -222,7 +210,6 @@ else:
     left, right = st.columns([2, 1])
 
     with left:
-        # line per episode (EpisodeOrder) — ticktext EpisodeRaw
         if not season_data.empty:
             fig = px.line(season_data, x="EpisodeOrder", y="US Viewers", markers=True,
                           title=f"Penonton per Episode — Season {season}",
@@ -243,7 +230,6 @@ else:
             st.plotly_chart(fig_rt, use_container_width=True)
 
     with right:
-        # Top 3 karakter di season
         chars = season_data.explode("Characters_list")["Characters_list"].dropna()
         if not chars.empty:
             top3 = chars.value_counts().nlargest(3)
@@ -253,7 +239,6 @@ else:
         else:
             st.info("Tidak ada data karakter untuk season ini.")
 
-        # Top writers di season
         writers = season_data.explode("Writers_list")["Writers_list"].dropna()
         if not writers.empty:
             topw = writers.value_counts().nlargest(5)
@@ -266,7 +251,6 @@ else:
         else:
             st.info("Tidak ada data penulis untuk season ini.")
 
-    # Insight season — ubah output supaya menampilkan Title (EpisodeRaw)
     st.markdown("---")
     st.markdown("### 💡 Insight")
     if season_data.empty:
@@ -274,7 +258,6 @@ else:
     else:
         avg = season_data["US Viewers"].mean()
         st.write(f"- Rata-rata penonton: **{avg:.2f} juta**.")
-        # episode terendah (2 terendah)
         worst = season_data.nsmallest(2, "US Viewers")[["Title", "EpisodeRaw", "US Viewers"]]
         st.write("- Episode dengan penonton terendah:")
         for _, r in worst.iterrows():
