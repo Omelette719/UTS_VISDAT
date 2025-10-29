@@ -1,148 +1,183 @@
+# ========================================
+# 🎬 SpongeBob SquarePants Data Dashboard
+# ========================================
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
+import altair as alt
 
-# --- PAGE CONFIG ---
+# --- SETUP HALAMAN ---
 st.set_page_config(
-    page_title="🧽 SpongeBob Analytics Dashboard",
-    page_icon="🦀",
+    page_title="SpongeBob Data Dashboard",
+    page_icon="🍍",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+alt.themes.enable("dark")
 
 # --- LOAD DATA ---
 @st.cache_data
 def load_data():
     df = pd.read_csv("spongebob_episodes.csv")
-
-    # Normalisasi kolom
-    df.columns = [col.strip().replace("â„–", "").replace("№", "").replace("–", "").replace("\ufeff", "") for col in df.columns]
-
-    # Rename standar
-    rename_map = {
-        "Season ": "Season",
-        "Episode ": "Episode",
-        "Running time": "Running Time",
+    df.columns = df.columns.str.strip()
+    df.rename(columns={
+        "Season â„–": "Season",
+        "Episode â„–": "Episode",
         "U.S. viewers (millions)": "US Viewers",
-        "Creative": "Writer"
-    }
-    df = df.rename(columns=rename_map)
+        "Main": "Main Character",
+        "Running time": "Running Time"
+    }, inplace=True)
 
-    # Cleaning
-    for col in ["Season", "Episode"]:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    if "US Viewers" in df.columns:
-        df["US Viewers"] = pd.to_numeric(df["US Viewers"], errors="coerce")
-        df["US Viewers"].fillna(df["US Viewers"].median(), inplace=True)
-
-    if "Running Time" in df.columns:
-        df["Running Time"] = df["Running Time"].astype(str).str.extract("(\d+)").astype(float)
-        df["Running Time"].fillna(df["Running Time"].mean(), inplace=True)
-
-    return df
+    df["Season"] = pd.to_numeric(df["Season"], errors="coerce")
+    df["Episode"] = pd.to_numeric(df["Episode"], errors="coerce")
+    df["US Viewers"] = pd.to_numeric(df["US Viewers"], errors="coerce")
+    df["Running Time"] = pd.to_numeric(df["Running Time"], errors="coerce")
+    return df.dropna(subset=["Season", "Episode", "US Viewers"])
 
 df = load_data()
 
 # --- SIDEBAR ---
-st.sidebar.image("https://upload.wikimedia.org/wikipedia/en/3/3b/SpongeBob_SquarePants_character.svg", width=150)
-st.sidebar.title("🧽 SpongeBob Dashboard")
+with st.sidebar:
+    st.title("🍍 SpongeBob Dashboard")
+    st.markdown("Visualisasi data episode SpongeBob SquarePants berdasarkan musim dan karakter.")
+    season_list = sorted(df["Season"].unique())
+    selected_season = st.selectbox("Pilih Season:", ["All"] + list(map(str, season_list)))
+    color_theme_list = ["turbo", "viridis", "plasma", "inferno", "blues", "reds"]
+    color_theme = st.selectbox("Pilih Tema Warna:", color_theme_list, index=0)
 
-# Filter
-season_list = sorted(df["Season"].dropna().unique().tolist())
-selected_season = st.sidebar.selectbox("Pilih Season", ["All"] + list(map(str, season_list)))
-if selected_season != "All":
-    df = df[df["Season"] == int(selected_season)]
+# --- JIKA PILIH SEMUA SEASON ---
+if selected_season == "All":
+    st.title("🌊 SpongeBob SquarePants Dashboard - Gambaran Umum")
 
-# --- HEADER ---
-st.markdown("<h1 style='text-align: center; color: #FFCC00;'>🦀 Krusty Krab Data Dashboard 🐚</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; font-size:18px;'>Analisis Episode SpongeBob SquarePants Berdasarkan Season, Penonton, dan Tim Kreatif</p>", unsafe_allow_html=True)
-st.markdown("---")
+    col = st.columns((1.2, 3, 2.5), gap="medium")
 
-# --- KPI Cards ---
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.metric("📺 Total Episode", len(df))
-with col2:
-    st.metric("👀 Rata-rata Penonton (juta)", round(df["US Viewers"].mean(), 2) if "US Viewers" in df.columns else "N/A")
-with col3:
-    st.metric("⏱️ Durasi Terpanjang (menit)", df["Running Time"].max() if "Running Time" in df.columns else "N/A")
+    with col[0]:
+        st.markdown("#### Statistik Umum")
+        total_episode = len(df)
+        total_season = df["Season"].nunique()
+        avg_viewers = df["US Viewers"].mean()
+        st.metric("Jumlah Season", total_season)
+        st.metric("Total Episode", total_episode)
+        st.metric("Rata-rata Penonton (juta)", f"{avg_viewers:.2f}")
 
-# --- VISUAL 1: Line Chart (Trend Viewers per Season) ---
-if "US Viewers" in df.columns:
-    viewers_trend = df.groupby("Season")["US Viewers"].mean().reset_index()
-    fig_line = px.line(
-        viewers_trend, x="Season", y="US Viewers",
-        markers=True,
-        title="📈 Tren Rata-rata Penonton per Season",
-        color_discrete_sequence=["#00BFFF"]
-    )
+        st.markdown("#### Karakter Terpopuler (Top 5)")
+        top_chars = df["Main Character"].value_counts().nlargest(5)
+        fig_pie_chars = px.pie(
+            names=top_chars.index,
+            values=top_chars.values,
+            title="Top 5 Karakter yang Sering Muncul",
+            color_discrete_sequence=px.colors.qualitative.Pastel
+        )
+        st.plotly_chart(fig_pie_chars, use_container_width=True)
 
-    # Highlight season terpilih
-    if selected_season != "All":
-        highlight = viewers_trend[viewers_trend["Season"] == int(selected_season)]
-        fig_line.add_trace(go.Scatter(
-            x=highlight["Season"],
-            y=highlight["US Viewers"],
-            mode="markers+text",
-            marker=dict(size=14, color="red"),
-            text=["⭐ Season Terpilih"],
-            textposition="top center",
-            showlegend=False
+    with col[1]:
+        st.markdown("#### Tren Penonton per Season")
+        trend = df.groupby("Season")["US Viewers"].mean().reset_index()
+        fig_line = px.line(
+            trend,
+            x="Season",
+            y="US Viewers",
+            title="Rata-rata Penonton Tiap Season",
+            markers=True,
+            color_discrete_sequence=["#00BFFF"]
+        )
+        st.plotly_chart(fig_line, use_container_width=True)
+
+        st.markdown("#### Jumlah Episode Tiap Season")
+        ep_count = df.groupby("Season").size().reset_index(name="Jumlah Episode")
+        fig_bar = px.bar(
+            ep_count,
+            x="Season",
+            y="Jumlah Episode",
+            color="Jumlah Episode",
+            color_continuous_scale=color_theme,
+            title="Jumlah Episode Tiap Season"
+        )
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+    with col[2]:
+        st.markdown("#### Insight")
+        st.write("""
+        - Season dengan penonton tertinggi: **Season {}**.
+        - Total episode terbanyak: **{}** episode.
+        - SpongeBob dan Patrick hampir selalu muncul di setiap episode, menunjukkan karakter inti tetap dominan.
+        """.format(
+            trend.loc[trend["US Viewers"].idxmax(), "Season"],
+            ep_count["Jumlah Episode"].max()
         ))
 
-    st.plotly_chart(fig_line, use_container_width=True)
+        with st.expander("Tentang Dataset"):
+            st.write("""
+            Data episode SpongeBob SquarePants bersumber dari Wikipedia dan Fandom.  
+            Kolom yang digunakan meliputi:
+            - Season & Episode Number  
+            - U.S. Viewers (millions)  
+            - Main Character  
+            - Running Time  
+            """)
 
-# --- VISUAL 2: Bar Chart (Episode Count per Season) ---
-episode_count = df.groupby("Season").size().reset_index(name="Jumlah Episode")
-fig_bar = px.bar(
-    episode_count, x="Season", y="Jumlah Episode",
-    color="Jumlah Episode", color_continuous_scale="sunset",
-    title="📊 Jumlah Episode per Season"
-)
+# --- JIKA PILIH SEASON TERTENTU ---
+else:
+    selected_season = int(selected_season)
+    st.title(f"🍍 Detail Analisis - Season {selected_season}")
 
-if selected_season != "All":
-    highlight_season = int(selected_season)
-    fig_bar.add_trace(go.Bar(
-        x=[highlight_season],
-        y=episode_count.loc[episode_count["Season"] == highlight_season, "Jumlah Episode"],
-        marker_color="red",
-        name="Season Terpilih"
-    ))
+    season_data = df[df["Season"] == selected_season]
+    col = st.columns((1.5, 3, 2.5), gap="medium")
 
-st.plotly_chart(fig_bar, use_container_width=True)
+    with col[0]:
+        st.markdown("#### Statistik Season")
+        total_eps = len(season_data)
+        avg_view = season_data["US Viewers"].mean()
+        max_ep = season_data.loc[season_data["US Viewers"].idxmax(), "Episode"]
+        st.metric("Jumlah Episode", total_eps)
+        st.metric("Rata-rata Penonton (juta)", f"{avg_view:.2f}")
+        st.metric("Episode Terpopuler", f"Episode {int(max_ep)}")
 
-# --- VISUAL 3: Pie Chart (Kontributor Penulis) ---
-if "Writer" in df.columns:
-    writer_counts = df["Writer"].value_counts().nlargest(8).reset_index()
-    writer_counts.columns = ["Writer", "Jumlah Episode"]
-    fig_pie = px.pie(
-        writer_counts, names="Writer", values="Jumlah Episode",
-        title="✍️ Proporsi Episode Berdasarkan Penulis",
-        color_discrete_sequence=px.colors.qualitative.Pastel
-    )
-    st.plotly_chart(fig_pie, use_container_width=True)
+        st.markdown("#### Top 3 Karakter Muncul")
+        char_count = season_data["Main Character"].value_counts().nlargest(3)
+        fig_pie_season = px.pie(
+            names=char_count.index,
+            values=char_count.values,
+            title=f"Top 3 Karakter Season {selected_season}",
+            color_discrete_sequence=px.colors.qualitative.Set3
+        )
+        st.plotly_chart(fig_pie_season, use_container_width=True)
 
-# --- VISUAL 4: Scatter Plot (Durasi vs Viewers) ---
-if "US Viewers" in df.columns:
-    fig_scatter = px.scatter(
-        df, x="Running Time", y="US Viewers",
-        color="Season", size="US Viewers",
-        title="🫧 Hubungan Durasi Episode dan Jumlah Penonton",
-        color_continuous_scale="turbo"
-    )
-    st.plotly_chart(fig_scatter, use_container_width=True)
+    with col[1]:
+        st.markdown(f"#### Tren Penonton Season {selected_season}")
+        fig_line_ep = px.line(
+            season_data,
+            x="Episode",
+            y="US Viewers",
+            markers=True,
+            title=f"Jumlah Penonton Tiap Episode (Season {selected_season})",
+            color_discrete_sequence=["#FFD700"]
+        )
+        st.plotly_chart(fig_line_ep, use_container_width=True)
 
-# --- INSIGHT SECTION ---
-st.markdown("### 🧠 Insight dari Data")
-st.markdown("""
-- Season dengan rata-rata penonton tertinggi menunjukkan momen puncak popularitas SpongeBob.  
-- Episode berdurasi sedang (10–12 menit) cenderung memiliki jumlah penonton stabil.  
-- Beberapa penulis memiliki pola kontribusi yang signifikan terhadap episode populer.
-""")
+        st.markdown("#### Durasi Episode")
+        if "Running Time" in season_data.columns:
+            fig_bar_dur = px.bar(
+                season_data,
+                x="Episode",
+                y="Running Time",
+                title="Durasi Episode (menit)",
+                color="Running Time",
+                color_continuous_scale=color_theme
+            )
+            st.plotly_chart(fig_bar_dur, use_container_width=True)
 
-st.markdown("---")
-st.caption("Data diambil dari SpongeBob Episode Dataset (Kaggle/Wikipedia). Dibuat untuk UTS Visualisasi Data 2025.")
+    with col[2]:
+        st.markdown("#### Insight Season")
+        st.write(f"""
+        - Season {selected_season} memiliki total {total_eps} episode.
+        - Episode {int(max_ep)} menonjol dengan jumlah penonton tertinggi.
+        - Karakter {char_count.index[0]} paling sering muncul dalam season ini.
+        """)
+
+        st.markdown("#### Rekomendasi")
+        st.write(f"""
+        Jika pola penonton menurun di pertengahan season,  
+        pertimbangkan memperbanyak episode dengan karakter {char_count.index[0]} dan {char_count.index[1]}.
+        """)
 
