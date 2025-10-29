@@ -4,7 +4,7 @@ import plotly.express as px
 import ast
 from datetime import datetime
 
-# === CONFIGURASI HALAMAN ===
+# === KONFIGURASI HALAMAN ===
 st.set_page_config(page_title="SpongeBob Episode Analytics", page_icon="🪸", layout="wide")
 px.defaults.template = "plotly_dark"
 
@@ -120,9 +120,17 @@ def load_and_clean(path="spongebob_episodes.csv"):
 
     if "Airdate" in df.columns:
         df["Airdate"] = pd.to_datetime(df["Airdate"], errors="coerce")
+        # --- [BARU] EKSTRAK HARI & BULAN (REQUEST 3) ---
+        df["Day_of_Week"] = df["Airdate"].dt.day_name()
+        df["Month"] = df["Airdate"].dt.month_name()
 
     if "US Viewers" in df.columns:
         df["US Viewers"] = pd.to_numeric(df["US Viewers"], errors="coerce")
+        # --- [PERBAIKAN] Isi median per season, BUKAN global ---
+        df["US Viewers"] = df.groupby("Season")["US Viewers"].transform(
+            lambda x: x.fillna(x.median())
+        )
+        # Jika masih ada NaN (misal 1 season penuh NaN), isi dgn global
         df["US Viewers"].fillna(df["US Viewers"].median(), inplace=True)
 
     def parse_list(s):
@@ -141,6 +149,14 @@ def load_and_clean(path="spongebob_episodes.csv"):
             df[col + "_list"] = df[col].apply(parse_list)
         else:
             df[col + "_list"] = [[] for _ in range(len(df))]
+    
+    # --- [BARU] BUAT FLAG BINTANG TAMU (REQUEST 2) ---
+    if "Guests_list" in df.columns:
+        df["Has_Guest"] = df["Guests_list"].apply(
+            lambda x: len(x) > 0 if isinstance(x, list) else False
+        )
+    else:
+        df["Has_Guest"] = False
 
     if "Running Time" in df.columns:
         df["Running Time (min)"] = (
@@ -206,25 +222,121 @@ if selected_season == "All":
     # Baris kedua: karakter global dan penulis global
     r2c1, r2c2 = st.columns(2)
     with r2c1:
+        # --- [PERBAIKAN] Mengganti Pie Chart menjadi Bar Chart ---
+        st.markdown("##### 👥 Karakter Paling Sering Muncul")
         chars = df_filtered.explode("Characters_list")["Characters_list"].dropna()
         if not chars.empty:
             top10 = chars.value_counts().nlargest(10)
-            fig = px.pie(
-                names=top10.index,
-                values=top10.values,
+            df_top_chars = top10.reset_index()
+            df_top_chars.columns = ["Character", "Count"]
+            fig = px.bar(
+                df_top_chars,
+                x="Count",
+                y="Character",
+                orientation="h",
                 title="Top 10 Karakter (Global)",
-                color_discrete_sequence=px.colors.qualitative.Pastel
+                color="Count",
+                color_continuous_scale="Plasma",
             )
+            fig.update_yaxes(categoryorder="total ascending")
             st.plotly_chart(fig, use_container_width=True)
+            
     with r2c2:
-        top_writers = df_filtered.explode("Writers_list")["Writers_list"].value_counts().nlargest(10)
-        if not top_writers.empty:
-            dfw = top_writers.reset_index()
-            dfw.columns = ["Writer", "Count"]
-            figw = px.bar(dfw, x="Count", y="Writer", orientation="h",
-                          title="Top 10 Penulis (Global)",
-                          color="Count", color_continuous_scale="sunset")
-            st.plotly_chart(figw, use_container_width=True)
+        # --- [DIUBAH] Analisis Penulis (REQUEST 1) ---
+        st.markdown("##### 📈 Penulis Paling Berpengaruh")
+        df_w_exploded = df_filtered.explode("Writers_list")
+        
+        if not df_w_exploded.empty and "US Viewers" in df_w_exploded.columns:
+            # Filter penulis yang setidaknya menulis 3 episode agar adil
+            writer_counts = df_w_exploded["Writers_list"].value_counts()
+            writers_to_keep = writer_counts[writer_counts > 2].index
+            
+            if not writers_to_keep.empty:
+                avg_viewers_by_writer = (
+                    df_w_exploded[df_w_exploded["Writers_list"].isin(writers_to_keep)]
+                    .groupby("Writers_list")["US Viewers"]
+                    .mean()
+                    .nlargest(10)
+                    .sort_values()  # Urutkan untuk bar chart horizontal
+                )
+                
+                df_avg_w = avg_viewers_by_writer.reset_index()
+                df_avg_w.columns = ["Writer", "Rata-rata Penonton (Juta)"]
+                
+                fig_avg_w = px.bar(
+                    df_avg_w,
+                    x="Rata-rata Penonton (Juta)",
+                    y="Writer",
+                    orientation="h",
+                    title="Top 10 Penulis dgn Rata-rata Penonton Tertinggi (Min. 3 Ep)",
+                    color="Rata-rata Penonton (Juta)",
+                    color_continuous_scale="Viridis",
+                    text="Rata-rata Penonton (Juta)",
+                )
+                fig_avg_w.update_traces(texttemplate='%{x:.2f} Jt', textposition='outside')
+                st.plotly_chart(fig_avg_w, use_container_width=True)
+            else:
+                st.info("Tidak cukup data penulis (min. 3 episode) untuk analisis rata-rata penonton.")
+        else:
+            st.info("Tidak ada data penulis atau penonton untuk analisis ini.")
+            
+    # --- [BARIS BARU] Analisis Bintang Tamu & Hari Tayang (REQUEST 2 & 3) ---
+    st.markdown("---") # Pemisah baru
+    st.subheader("🌟 Analisis Bintang Tamu & Hari Tayang")
+    r3c1, r3c2 = st.columns(2)
+
+    # (REQUEST 2: Analisis Bintang Tamu)
+    with r3c1:
+        st.markdown("##### 🎤 Pengaruh Bintang Tamu")
+        if "Has_Guest" in df_filtered.columns:
+            guest_kpi = df_filtered.groupby("Has_Guest")["US Viewers"].mean()
+            val_with_guest = guest_kpi.get(True, 0)
+            val_without_guest = guest_kpi.get(False, 0)
+            
+            # Tampilkan sebagai metrics
+            kpi_c1, kpi_c2 = st.columns(2)
+            with kpi_c1:
+                st.metric(
+                    "Rata-rata Penonton (Dgn Bintang Tamu)", 
+                    f"{val_with_guest:.2f} Juta"
+                )
+            with kpi_c2:
+                delta_val = val_with_guest - val_without_guest
+                st.metric(
+                    "Rata-rata Penonton (Tanpa Bintang Tamu)", 
+                    f"{val_without_guest:.2f} Juta",
+                    # Tampilkan delta (perbedaan)
+                    delta=f"{delta_val:+.2f} Juta",
+                    delta_color="normal" # Hijau jika positif, Merah jika negatif
+                )
+            st.caption("Delta menunjukkan perbedaan antara episode 'Dengan' dan 'Tanpa' Bintang Tamu.")
+        else:
+            st.info("Data 'Guests_list' tidak ditemukan untuk analisis.")
+
+    # (REQUEST 3: Analisis Hari Tayang)
+    with r3c2:
+        st.markdown("##### 📅 Analisis Hari Tayang")
+        if "Day_of_Week" in df_filtered.columns:
+            # Urutkan hari secara kronologis
+            days_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            avg_by_day = df_filtered.groupby("Day_of_Week")["US Viewers"].mean().reindex(days_order)
+            
+            df_day = avg_by_day.reset_index()
+            df_day.columns = ["Hari", "Rata-rata Penonton (Juta)"]
+            
+            fig_day = px.bar(
+                df_day.dropna(),
+                x="Hari",
+                y="Rata-rata Penonton (Juta)",
+                title="Rata-rata Penonton Berdasarkan Hari Tayang",
+                color="Rata-rata Penonton (Juta)",
+                color_continuous_scale=px.colors.sequential.Sunset
+            )
+            st.plotly_chart(fig_day, use_container_width=True)
+        else:
+            st.info("Data 'Airdate' tidak ditemukan untuk analisis hari.")
+    # --- SELESAI PENAMBAHAN ---
+
 
     st.markdown("---")
     try:
@@ -235,6 +347,7 @@ if selected_season == "All":
         st.info("Tidak ada data viewers yang cukup untuk insight global.")
 
 else:
+    # --- BAGIAN INI TETAP SAMA SEPERTI ASLINYA ---
     season = int(selected_season)
     season_data = df_filtered[df_filtered["Season"] == season].sort_values("EpisodeOrder")
     st.subheader(f"🪸 Detail Season {season}")
@@ -255,12 +368,12 @@ else:
     with left:
         if not season_data.empty:
             fig = px.line(season_data, x="EpisodeOrder", y="US Viewers", markers=True,
-                          title=f"Penonton per Episode — Season {season}",
-                          labels={"US Viewers":"Penonton (juta)", "EpisodeOrder":"Episode"},
-                          color_discrete_sequence=[BKB_ACCENT])
+                            title=f"Penonton per Episode — Season {season}",
+                            labels={"US Viewers":"Penonton (juta)", "EpisodeOrder":"Episode"},
+                            color_discrete_sequence=[BKB_ACCENT])
             fig.update_xaxes(tickmode="array",
-                             tickvals=season_data["EpisodeOrder"],
-                             ticktext=season_data["EpisodeRaw"])
+                                tickvals=season_data["EpisodeOrder"],
+                                ticktext=season_data["EpisodeRaw"])
             st.plotly_chart(fig, use_container_width=True)
 
         if show_runtime and "Running Time (min)" in season_data:
@@ -268,8 +381,8 @@ else:
                             title="Durasi Episode (menit)",
                             color="Running Time (min)", color_continuous_scale="viridis")
             fig_rt.update_xaxes(tickmode="array",
-                                tickvals=season_data["EpisodeOrder"],
-                                ticktext=season_data["EpisodeRaw"])
+                                    tickvals=season_data["EpisodeOrder"],
+                                    ticktext=season_data["EpisodeRaw"])
             st.plotly_chart(fig_rt, use_container_width=True)
 
     with right:
@@ -277,7 +390,7 @@ else:
         if not chars.empty:
             topS = chars.value_counts().nlargest(10)
             figp = px.pie(values=topS.values, names=topS.index,
-                          title="Top 10 Karakter", color_discrete_sequence=px.colors.sequential.Plasma)
+                            title="Top 10 Karakter", color_discrete_sequence=px.colors.sequential.Plasma)
             st.plotly_chart(figp, use_container_width=True)
         else:
             st.info("Tidak ada data karakter untuk season ini.")
@@ -288,8 +401,8 @@ else:
             dfw = topw.reset_index()
             dfw.columns = ["Writer", "Count"]
             figw = px.bar(dfw, x="Count", y="Writer", orientation="h",
-                          title="Top Penulis Season Ini",
-                          color="Count", color_continuous_scale="sunset")
+                            title="Top Penulis Season Ini",
+                            color="Count", color_continuous_scale="sunset")
             st.plotly_chart(figw, use_container_width=True)
         else:
             st.info("Tidak ada data penulis untuk season ini.")
