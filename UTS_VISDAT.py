@@ -6,7 +6,7 @@ from datetime import datetime
 
 # === CONFIGURASI HALAMAN ===
 st.set_page_config(page_title="SpongeBob Episode Analytics", page_icon="🪸", layout="wide")
-px.defaults.template = "plotly_dark"
+px.defaults.template = "plotly_white"
 
 # === PALET WARNA “Bikini Bottom” ===
 BKB_BG = "#022F40"      # laut dalam
@@ -176,7 +176,7 @@ with st.sidebar:
     all_writers = sorted(set(
         w for sublist in df["Writers_list"].dropna() for w in sublist if isinstance(sublist, list)
     ))
-    selected_writer = st.selectbox("Filter berdasarkan Penulis:", ["Semua"] + all_writers)
+    selected_writer = st.selectbox("Filter berdasarkan Penulis:", ["All"] + all_writers)
 
     show_runtime = st.checkbox("Tampilkan durasi episode", value=False)
 
