@@ -18,21 +18,59 @@ alt.themes.enable("dark")
 # --- LOAD DATA ---
 @st.cache_data
 def load_data():
-    df = pd.read_csv("spongebob_episodes.csv")
-    df.columns = df.columns.str.strip()
-    df.rename(columns={
-        "Season â„–": "Season",
-        "Episode â„–": "Episode",
-        "U.S. viewers (millions)": "US Viewers",
-        "Main": "Main Character",
-        "Running time": "Running Time"
-    }, inplace=True)
+    import chardet
 
+    # Deteksi encoding biar gak rusak kayak “Season â„–”
+    with open("spongebob_episodes.csv", "rb") as f:
+        enc = chardet.detect(f.read())["encoding"]
+
+    df = pd.read_csv("spongebob_episodes.csv", encoding=enc)
+    df.columns = df.columns.str.strip()
+
+    # Bersihkan karakter aneh di nama kolom
+    df.columns = (
+        df.columns.str.replace("â„–", "No", regex=False)
+        .str.replace("–", "-", regex=False)
+        .str.replace("  ", " ")
+        .str.strip()
+    )
+
+    # Deteksi otomatis kolom yang relevan
+    rename_map = {}
+    for col in df.columns:
+        low = col.lower()
+        if "season" in low:
+            rename_map[col] = "Season"
+        elif "episode" in low:
+            rename_map[col] = "Episode"
+        elif "viewer" in low:
+            rename_map[col] = "US Viewers"
+        elif "main" in low:
+            rename_map[col] = "Main Character"
+        elif "running" in low:
+            rename_map[col] = "Running Time"
+
+    df.rename(columns=rename_map, inplace=True)
+
+    # Pastikan kolom penting ada
+    required_cols = ["Season", "Episode", "US Viewers"]
+    for c in required_cols:
+        if c not in df.columns:
+            st.error(f"Kolom '{c}' tidak ditemukan di data. Kolom tersedia: {df.columns.tolist()}")
+            st.stop()
+
+    # Konversi tipe data numerik
     df["Season"] = pd.to_numeric(df["Season"], errors="coerce")
     df["Episode"] = pd.to_numeric(df["Episode"], errors="coerce")
     df["US Viewers"] = pd.to_numeric(df["US Viewers"], errors="coerce")
-    df["Running Time"] = pd.to_numeric(df["Running Time"], errors="coerce")
-    return df.dropna(subset=["Season", "Episode", "US Viewers"])
+
+    # Durasi opsional
+    if "Running Time" in df.columns:
+        df["Running Time"] = pd.to_numeric(df["Running Time"], errors="coerce")
+
+    # Bersihkan baris kosong
+    df.dropna(subset=["Season", "Episode", "US Viewers"], inplace=True)
+    return df
 
 df = load_data()
 
