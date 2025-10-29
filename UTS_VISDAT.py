@@ -208,11 +208,11 @@ if selected_season == "All":
     with r2c1:
         chars = df_filtered.explode("Characters_list")["Characters_list"].dropna()
         if not chars.empty:
-            top5 = chars.value_counts().nlargest(5)
+            top10 = chars.value_counts().nlargest(10)
             fig = px.pie(
-                names=top5.index,
+                names=top10.index,
                 values=top5.values,
-                title="Top 5 Karakter (Global)",
+                title="Top 10 Karakter (Global)",
                 color_discrete_sequence=px.colors.qualitative.Pastel
             )
             st.plotly_chart(fig, use_container_width=True)
@@ -275,9 +275,9 @@ else:
     with right:
         chars = season_data.explode("Characters_list")["Characters_list"].dropna()
         if not chars.empty:
-            top3 = chars.value_counts().nlargest(3)
-            figp = px.pie(values=top3.values, names=top3.index,
-                          title="Top 3 Karakter", color_discrete_sequence=px.colors.sequential.Plasma)
+            topS = chars.value_counts().nlargest(10)
+            figp = px.pie(values=topS.values, names=top3.index,
+                          title="Top 10 Karakter", color_discrete_sequence=px.colors.sequential.Plasma)
             st.plotly_chart(figp, use_container_width=True)
         else:
             st.info("Tidak ada data karakter untuk season ini.")
