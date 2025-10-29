@@ -6,7 +6,7 @@ from datetime import datetime
 
 # === CONFIGURASI HALAMAN ===
 st.set_page_config(page_title="SpongeBob Episode Analytics", page_icon="🪸", layout="wide")
-px.defaults.template = "plotly_dark"
+px.defaults.template = "plotly_white"
 
 # === PALET WARNA “Bikini Bottom” ===
 BKB_BG = "#022F40"      # laut dalam
@@ -15,63 +15,107 @@ BKB_PINK = "#FF8FB1"    # karang pink
 BKB_LIGHT = "#2A9FD6"   # biru langit laut
 
 # === HEADER DASHBOARD ===
-st.markdown(
-    """
+st.markdown("""
     <style>
-        /* Background penuh di bagian atas */
-        .bikini-banner {
-            background-image: url('https://i.pinimg.com/736x/88/20/6e/88206ecea0c318ad206657f310baeecc.jpg');
-            background-size: cover;
-            background-position: center;
-            border-radius: 12px;
-            box-shadow: 0 4px 30px rgba(0,0,0,0.4);
-            padding: 24px 28px;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        /* Logo SpongeBob */
-        .bikini-banner img {
-            width: 90px;
-            height: auto;
-            border-radius: 12px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.3);
-        }
-
-        /* Teks judul dan subjudul */
-        .bikini-title {
-            color: white;
+        /* === Background utama === */
+        .stApp {
+            background: linear-gradient(180deg, #FFF8D6 0%, #FFE97D 50%, #FFD54A 100%);
+            background-attachment: fixed;
+            color: #222;
             font-family: 'Comic Sans MS', 'Trebuchet MS', sans-serif;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
-        }
-        .bikini-title h1 {
-            font-size: 2.1em;
-            margin-bottom: 4px;
-        }
-        .bikini-title p {
-            font-size: 1.05em;
-            margin: 0;
-            opacity: 0.9;
         }
 
-        /* Animasi halus */
-        .bikini-banner:hover img {
-            transform: scale(1.05) rotate(-2deg);
-            transition: all 0.4s ease-in-out;
+        /* === Sidebar === */
+        section[data-testid="stSidebar"] {
+            background: linear-gradient(180deg, #FFEB99 0%, #E2B664 100%);
+            border-right: 3px solid #A05B2C;
+            box-shadow: 2px 0 12px rgba(0,0,0,0.25);
+            border-top-right-radius: 16px;
+        }
+
+        /* Judul Sidebar */
+        section[data-testid="stSidebar"] h1, 
+        section[data-testid="stSidebar"] h2, 
+        section[data-testid="stSidebar"] h3 {
+            color: #3B2004;
+            text-shadow: 1px 1px 0 #FFF3C4;
+        }
+
+        /* Pilihan dropdown dan checkbox */
+        div[data-baseweb="select"] > div, .stCheckbox {
+            background-color: #FFFBEA !important;
+            border-radius: 8px;
+            border: 1px solid #C6893F !important;
+        }
+
+        /* Tombol */
+        .stButton > button {
+            background: linear-gradient(180deg, #FFD54A 0%, #F9A602 100%);
+            color: #3B2004;
+            font-weight: 600;
+            border-radius: 12px;
+            border: 2px solid #3B2004;
+            box-shadow: 0 3px 0 #3B2004;
+            transition: all 0.25s ease-in-out;
+        }
+        .stButton > button:hover {
+            background: linear-gradient(180deg, #F9A602 0%, #FFD54A 100%);
+            transform: translateY(-3px);
+        }
+
+        /* Metric box */
+        div[data-testid="stMetricValue"] {
+            color: #3B2004 !important;
+        }
+        div[data-testid="stMetric"] {
+            background-color: #FFF5C7;
+            border-radius: 14px;
+            padding: 12px 18px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            border: 2px solid #FFE97D;
+        }
+
+        /* Chart container */
+        .js-plotly-plot {
+            border-radius: 14px;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.25);
+            background-color: #FFFDF3 !important;
+            padding: 12px;
+            transition: all 0.3s ease-in-out;
+        }
+        .js-plotly-plot:hover {
+            transform: translateY(-3px);
+        }
+
+        /* Scrollbar SpongeBob-style */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #C6893F;
+            border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #A05B2C;
+        }
+        ::-webkit-scrollbar-track {
+            background: #FFF8D6;
+        }
+
+        /* Garis pemisah */
+        hr, .stMarkdown hr {
+            border-top: 3px dashed #A05B2C;
+        }
+
+        /* Footer */
+        .stMarkdown div {
+            text-align: center;
+            color: #3B2004;
+            font-weight: 500;
         }
     </style>
+""", unsafe_allow_html=True)
 
-    <div class="bikini-banner">
-        <img src="https://upload.wikimedia.org/wikipedia/en/thumb/2/22/SpongeBob_SquarePants_logo_by_Nickelodeon.svg/512px-SpongeBob_SquarePants_logo_by_Nickelodeon.svg.png" alt="SpongeBob Logo">
-        <div class="bikini-title">
-            <h1>SpongeBob Episode Analytics — Bikini Bottom</h1>
-            <p>Dashboard interaktif berdasarkan data episode SpongeBob SquarePants.</p>
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
 st.write("") 
 
 # === GAYA TAMBAHAN: Tema SpongeBob ===
