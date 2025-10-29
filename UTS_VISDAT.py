@@ -18,11 +18,10 @@ BKB_ACCENT = "#FFD54A"  # kuning SpongeBob
 BKB_PINK = "#FF8FB1"    # karang pink
 BKB_LIGHT = "#2A9FD6"   # biru langit laut
 
-# === HEADER DASHBOARD (tetap seperti versi asli) ===
+# === HEADER DASHBOARD ===
 st.markdown(
     """
     <style>
-        /* Background penuh di bagian atas */
         .bikini-banner {
             background-image: url('https://i.pinimg.com/736x/88/20/6e/88206ecea0c318ad206657f310baeecc.jpg');
             background-size: cover;
@@ -34,40 +33,19 @@ st.markdown(
             align-items: center;
             gap: 20px;
         }
-
-        /* Logo SpongeBob */
         .bikini-banner img {
             width: 90px;
             height: auto;
             border-radius: 12px;
             box-shadow: 0 0 15px rgba(0,0,0,0.3);
         }
-
-        /* Teks judul dan subjudul */
-        .bikini-title {
-            color: white;
-            font-family: 'Comic Sans MS', 'Trebuchet MS', sans-serif;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
-        }
-        .bikini-title h1 {
-            font-size: 2.1em;
-            margin-bottom: 4px;
-        }
-        .bikini-title p {
-            font-size: 1.05em;
-            margin: 0;
-            opacity: 0.9;
-        }
-
-        /* Animasi halus */
-        .bikini-banner:hover img {
-            transform: scale(1.05) rotate(-2deg);
-            transition: all 0.4s ease-in-out;
-        }
+        .bikini-title { color: white; font-family: 'Comic Sans MS', 'Trebuchet MS', sans-serif; text-shadow: 2px 2px 4px rgba(0,0,0,0.6); }
+        .bikini-title h1 { font-size: 2.1em; margin-bottom: 4px; }
+        .bikini-title p { font-size: 1.05em; margin: 0; opacity: 0.9; }
+        .bikini-banner:hover img { transform: scale(1.05) rotate(-2deg); transition: all 0.4s ease-in-out; }
     </style>
-
     <div class="bikini-banner">
-        <img src="https://upload.wikimedia.org/wikipedia/en/thumb/2/22/SpongeBob_SquarePants_logo_by_Nickelodeon.svg/512px-SpongeBob_SquarePants_logo_by_Nickelodeon.svg.png" alt="SpongeBob Logo">
+        <img src="https://upload.wikimedia.org/wikipedia/en/thumb/2/22/SpongeBob_SquarePants_logo_by_Nickelodeon.svg/512px-SpongeBob_SquarePants_logo_by_Nickelodeon.svg.png">
         <div class="bikini-title">
             <h1>SpongeBob Episode Analytics</h1>
             <p>Dashboard interaktif berdasarkan data episode SpongeBob SquarePants — lengkap untuk UTS Data Viz.</p>
@@ -76,7 +54,7 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-st.write("")  # jarak ke konten berikut
+st.write("")
 
 # === UTILITIES ===
 def safe_literal_eval(v):
@@ -85,7 +63,6 @@ def safe_literal_eval(v):
     if isinstance(v, (list, tuple)):
         return list(v)
     s = str(v).strip()
-    # try parse Python list
     if s.startswith('[') and s.endswith(']'):
         try:
             out = ast.literal_eval(s)
@@ -93,13 +70,11 @@ def safe_literal_eval(v):
                 return [str(x).strip() for x in out if str(x).strip()]
         except Exception:
             pass
-    # fallback split by comma or semicolon
     parts = re.split(r',|;|\|', s)
     parts = [p.strip().strip('"').strip("'") for p in parts if p and p.strip() not in ['nan','None']]
     return parts
 
 def parse_running_time_to_min(s):
-    # return minutes as float (minutes or minutes + seconds)
     if pd.isna(s):
         return np.nan
     s = str(s)
@@ -107,25 +82,22 @@ def parse_running_time_to_min(s):
     if not nums:
         return np.nan
     if 'second' in s or 'sec' in s:
-        # if both minutes and seconds present e.g. "11 minutes, 4 seconds"
         if len(nums) >= 2:
             return int(nums[0]) + int(nums[1]) / 60.0
         else:
             return int(nums[0]) / 60.0
     else:
-        # assume first number is minutes
         return float(nums[0])
 
 def detect_anomalies_zscore(series, thresh=2.0):
     s = series.fillna(series.mean())
-    mean = s.mean()
-    std = s.std(ddof=0)
+    mean, std = s.mean(), s.std(ddof=0)
     if std == 0 or np.isnan(std):
         return pd.Series([False]*len(s), index=series.index)
     z = (s - mean) / std
     return z.abs() > thresh
 
-# === PEMBACAAN DAN PEMBERSIHAN DATA (refined) ===
+# === PEMBACAAN DAN PEMBERSIHAN DATA ===
 @st.cache_data(ttl=600)
 def load_and_clean(path="spongebob_episodes.csv"):
     encodings = ["utf-8", "latin1", "cp1252"]
@@ -139,10 +111,9 @@ def load_and_clean(path="spongebob_episodes.csv"):
     if df is None:
         raise RuntimeError(f"Gagal membaca file CSV dengan encoding: {encodings}")
 
-    # normalize column names
-    df.columns = df.columns.str.strip().str.replace("\ufeff","", regex=False).str.replace("–", "-", regex=False)
+    df.columns = df.columns.str.strip().str.replace("\ufeff","", regex=False)
 
-    # map important columns (safe)
+    # map penting
     colmap = {}
     for c in df.columns:
         cl = c.lower()
@@ -166,74 +137,50 @@ def load_and_clean(path="spongebob_episodes.csv"):
             colmap[c] = "Airdate"
     df.rename(columns=colmap, inplace=True)
 
-    # Cast season
     if "Season" in df.columns:
         df["Season"] = pd.to_numeric(df["Season"], errors="coerce").astype("Int64")
-
-    # EpisodeRaw safe cast
     if "EpisodeRaw" in df.columns:
         df["EpisodeRaw"] = df["EpisodeRaw"].astype(str)
 
-if "Airdate" in df.columns:
-    df["Airdate"] = pd.to_datetime(df["Airdate"], errors="coerce", infer_datetime_format=True)
+    if "Airdate" in df.columns:
+        df["Airdate_parsed"] = pd.to_datetime(df["Airdate"], errors="coerce", infer_datetime_format=True)
+    else:
+        df["Airdate_parsed"] = pd.NaT
 
-if "US Viewers" in df.columns:
-    df["US Viewers"] = pd.to_numeric(df["US Viewers"], errors="coerce")
-    df["US Viewers"] = df["US Viewers"].fillna(df["US Viewers"].median())
+    if "US Viewers" in df.columns:
+        df["US Viewers"] = pd.to_numeric(df["US Viewers"], errors="coerce").fillna(df["US Viewers"].median())
+    else:
+        df["US Viewers"] = np.nan
 
-    # parse lists for Writers, Characters, Guests
     for col in ["Characters","Writers","Guests"]:
         if col in df.columns:
             df[col + "_list"] = df[col].apply(safe_literal_eval)
         else:
             df[col + "_list"] = [[] for _ in range(len(df))]
 
-    # Running Time (minutes)
-    if "Running Time" in df.columns:
-        df["Running Time (min)"] = df["Running Time"].apply(parse_running_time_to_min)
-    else:
-        df["Running Time (min)"] = np.nan
-
-    # EpisodeOrder (per season)
+    df["Running Time (min)"] = df["Running Time"].apply(parse_running_time_to_min) if "Running Time" in df.columns else np.nan
     df["EpisodeOrder"] = df.groupby("Season").cumcount() + 1
 
-    # Episode Display text
-    def build_display(row):
-        title = row.get("Title") if pd.notna(row.get("Title")) else ""
-        epraw = row.get("EpisodeRaw") if pd.notna(row.get("EpisodeRaw")) else ""
-        return f"{title} ({epraw})" if title else f"Episode {epraw}"
-    df["EpisodeDisplay"] = df.apply(build_display, axis=1)
+    df["EpisodeDisplay"] = df.apply(lambda r: f"{r.get('Title','')} ({r.get('EpisodeRaw','')})", axis=1)
 
-    # Anomalies (per season) using US Viewers
     if "US Viewers" in df.columns:
         df["IsAnomaly"] = df.groupby("Season")["US Viewers"].transform(lambda s: detect_anomalies_zscore(s))
-    else:
-        df["IsAnomaly"] = False
-
-    # Top10% flag
-    if "US Viewers" in df.columns:
         cutoff = df["US Viewers"].quantile(0.90)
         df["Top10pct"] = df["US Viewers"] >= cutoff
-    else:
-        df["Top10pct"] = False
-
-    # Moving average per season (window=5 episodes)
-    df = df.sort_values(["Season","EpisodeOrder"])
-    if "US Viewers" in df.columns:
+        df = df.sort_values(["Season","EpisodeOrder"])
         df["MA5"] = df.groupby("Season")["US Viewers"].transform(lambda s: s.rolling(window=5, min_periods=1).mean())
     else:
+        df["IsAnomaly"] = False
+        df["Top10pct"] = False
         df["MA5"] = np.nan
 
-    # Season averages + growth
     season_avg = df.groupby("Season", dropna=True)["US Viewers"].mean().reset_index().rename(columns={"US Viewers":"SeasonAvg"})
     season_avg["SeasonGrowthPct"] = season_avg["SeasonAvg"].pct_change().fillna(0) * 100
-
-    # merge season_avg onto df for convenience
     df = df.merge(season_avg[["Season","SeasonAvg"]], on="Season", how="left")
 
     return df, season_avg
 
-# load data
+# === LOAD DATA ===
 try:
     df, season_avg = load_and_clean("spongebob_episodes.csv")
 except Exception as e:
