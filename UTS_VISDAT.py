@@ -169,7 +169,7 @@ def load_and_clean(path="spongebob_episodes.csv"):
 
 # load
 try:
-    df = load_and_clean("/mnt/data/spongebob_episodes.csv")
+    df = load_and_clean("spongebob_episodes.csv")
 except Exception as e:
     st.error(f"Error saat membaca data: {e}")
     st.stop()
