@@ -1,4 +1,3 @@
-# 🧽 UTS_VISDAT_Revisi_v3.py — SpongeBob Episode Analytics (Bikini Bottom Edition + Filter Writer)
 import streamlit as st
 import pandas as pd
 import plotly.express as px
