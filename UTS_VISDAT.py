@@ -174,19 +174,12 @@ def load_and_clean(path="spongebob_episodes.csv"):
     if "EpisodeRaw" in df.columns:
         df["EpisodeRaw"] = df["EpisodeRaw"].astype(str)
 
-    # parse airdate
-    if "Airdate" in df.columns:
-        df["Airdate_parsed"] = pd.to_datetime(df["Airdate"], errors="coerce")
-    else:
-        df["Airdate_parsed"] = pd.NaT
+if "Airdate" in df.columns:
+    df["Airdate"] = pd.to_datetime(df["Airdate"], errors="coerce", infer_datetime_format=True)
 
-    # US Viewers numeric
-    if "US Viewers" in df.columns:
-        df["US Viewers"] = pd.to_numeric(df["US Viewers"], errors="coerce")
-        # show we did a cleaning step: fill missing with median
-        df["US Viewers"].fillna(df["US Viewers"].median(), inplace=True)
-    else:
-        df["US Viewers"] = np.nan
+if "US Viewers" in df.columns:
+    df["US Viewers"] = pd.to_numeric(df["US Viewers"], errors="coerce")
+    df["US Viewers"] = df["US Viewers"].fillna(df["US Viewers"].median())
 
     # parse lists for Writers, Characters, Guests
     for col in ["Characters","Writers","Guests"]:
