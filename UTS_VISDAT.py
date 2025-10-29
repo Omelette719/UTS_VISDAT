@@ -17,20 +17,63 @@ BKB_LIGHT = "#2A9FD6"   # biru langit laut
 
 # === HEADER DASHBOARD ===
 st.markdown(
-    f"""
-    <div style="
-        background: linear-gradient(90deg, {BKB_BG} 0%, #074a62 100%);
-        padding: 18px; border-radius: 10px;
-        box-shadow: 0 4px 30px rgba(0,0,0,0.3);
-        color: white;
-    ">
-        <h1 style="margin:6px 0 2px 0; font-family: 'Helvetica Neue', Arial;">🧽 SpongeBob Episode Analytics — Bikini Bottom</h1>
-        <p style="margin:0; opacity:0.85">Dashboard interaktif berdasarkan data episode SpongeBob SquarePants.</p>
+    """
+    <style>
+        /* Background penuh di bagian atas */
+        .bikini-banner {
+            background-image: url('https://i.pinimg.com/736x/88/20/6e/88206ecea0c318ad206657f310baeecc.jpg');
+            background-size: cover;
+            background-position: center;
+            border-radius: 12px;
+            box-shadow: 0 4px 30px rgba(0,0,0,0.4);
+            padding: 24px 28px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        /* Logo SpongeBob */
+        .bikini-banner img {
+            width: 90px;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+        }
+
+        /* Teks judul dan subjudul */
+        .bikini-title {
+            color: white;
+            font-family: 'Comic Sans MS', 'Trebuchet MS', sans-serif;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
+        }
+        .bikini-title h1 {
+            font-size: 2.1em;
+            margin-bottom: 4px;
+        }
+        .bikini-title p {
+            font-size: 1.05em;
+            margin: 0;
+            opacity: 0.9;
+        }
+
+        /* Animasi halus */
+        .bikini-banner:hover img {
+            transform: scale(1.05) rotate(-2deg);
+            transition: all 0.4s ease-in-out;
+        }
+    </style>
+
+    <div class="bikini-banner">
+        <img src="https://www.citypng.com/public/uploads/preview/hd-spongebob-squarepants-logo-with-cartoon-character-png-7017516947821984fe8jlm3dz.png" alt="SpongeBob Logo">
+        <div class="bikini-title">
+            <h1>🧽 SpongeBob Episode Analytics — Bikini Bottom</h1>
+            <p>Dashboard interaktif berdasarkan data episode SpongeBob SquarePants.</p>
+        </div>
     </div>
     """,
-    unsafe_allow_html=True,
+    unsafe_allow_html=True
 )
-st.write("")
+st.write("") 
 
 # === PEMBACAAN DAN PEMBERSIHAN DATA ===
 @st.cache_data(ttl=300)
