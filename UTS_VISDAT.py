@@ -19,24 +19,27 @@ st.set_page_config(
 def load_data():
     df = pd.read_csv("spongebob_episodes.csv")
 
-    # --- CLEANING ---
-    df = df.rename(columns={
-        "Season â„–": "Season",
-        "Episode â„–": "Episode",
-        "U.S. viewers (millions)": "US Viewers (millions)",
-        "Running time": "Running Time"
-    })
+    # --- Normalisasi nama kolom (hapus spasi, simbol aneh) ---
+    df.columns = [col.strip().replace("â„–", "").replace("№", "").replace("–", "").replace("\ufeff", "") for col in df.columns]
 
-    # ubah tipe data numerik
-    for col in ["Season", "Episode"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
+    # --- Rename standar agar mudah dipanggil ---
+    rename_map = {
+        "Season ": "Season",
+        "Episode ": "Episode",
+        "Running time": "Running Time",
+        "Creative": "Creative",
+        "Storyboard": "Storyboard"
+    }
+    df = df.rename(columns=rename_map)
 
-    # isi nilai kosong di viewers pakai median
-    if "US Viewers (millions)" in df.columns:
-        df["US Viewers (millions)"] = pd.to_numeric(df["US Viewers (millions)"], errors="coerce")
-        df["US Viewers (millions)"].fillna(df["US Viewers (millions)"].median(), inplace=True)
+    # --- Cleaning ---
+    # ubah ke numerik kalau bisa
+    if "Season" in df.columns:
+        df["Season"] = pd.to_numeric(df["Season"], errors="coerce")
+    if "Episode" in df.columns:
+        df["Episode"] = pd.to_numeric(df["Episode"], errors="coerce")
 
-    # isi nilai kosong running time
+    # isi kosong di Running Time
     if "Running Time" in df.columns:
         df["Running Time"].fillna(df["Running Time"].mode()[0], inplace=True)
 
