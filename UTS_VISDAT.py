@@ -1,120 +1,98 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import altair as alt
+import plotly.express as px
 
-# ======== SETUP PAGE ========
+# Konfigurasi halaman
 st.set_page_config(
-    page_title="SpongeBob Episode Insights 🧽",
-    page_icon="🦀",
+    page_title="SpongeBob Episodes Dashboard",
+    page_icon="🧽",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="expanded"
 )
 
-# ======== LOAD DATA ========
-@st.cache_data
-def load_data():
-    df = pd.read_csv("spongebob_episodes_cleaned_v2.csv")
-    df["Air_Year"] = pd.to_numeric(df["Air_Year"], errors="coerce")
-    df = df.dropna(subset=["Air_Year"])
-    return df
+alt.themes.enable("dark")
 
-df = load_data()
+# Load dataset
+df = pd.read_csv("spongebob_episodes.csv")
 
-df["U.S. viewers (millions)"] = (
-    pd.to_numeric(df["U.S. viewers (millions)"], errors="coerce")
-)
-
+# Bersihkan data viewers jadi numerik
 df["U.S. viewers (millions)"] = pd.to_numeric(df["U.S. viewers (millions)"], errors="coerce").fillna(0)
 
-# ======== SIDEBAR ========
-st.sidebar.image("https://upload.wikimedia.org/wikipedia/en/3/3b/SpongeBob_SquarePants_character.svg", width=150)
-st.sidebar.title("Filter Bikini Bottom 🏝️")
+# Sidebar
+with st.sidebar:
+    st.title("🧽 SpongeBob Dashboard")
+    st.markdown("### Bikini Bottom Data Explorer")
 
-year_range = st.sidebar.slider("Pilih rentang tahun", 
-                               int(df["Air_Year"].min()), 
-                               int(df["Air_Year"].max()), 
-                               (int(df["Air_Year"].min()), int(df["Air_Year"].max())))
+    seasons = sorted(df["Season"].unique())
+    selected_season = st.selectbox("Pilih Season", seasons)
 
-writer_filter = st.sidebar.multiselect(
-    "Pilih penulis (Writer)", 
-    sorted(df["Writers_List"].explode().dropna().unique()),
-    default=[]
-)
+    df_season = df[df["Season"] == selected_season]
 
-view_threshold = st.sidebar.slider("Ambang Viewership Minimum (juta)", 
-                                   float(df["U.S. viewers (millions)"].min()), 
-                                   float(df["U.S. viewers (millions)"].max()), 
-                                   float(df["U.S. viewers (millions)"].min()))
+    color_theme_list = ["blues", "viridis", "plasma", "turbo", "magma", "inferno"]
+    selected_color = st.selectbox("Pilih Tema Warna", color_theme_list)
 
-# ======== FILTER DATA ========
-filtered = df[
-    (df["Air_Year"].between(year_range[0], year_range[1])) &
-    (df["U.S. viewers (millions)"] >= view_threshold)
-]
-
-if writer_filter:
-    filtered = filtered[filtered["Writers_List"].apply(lambda x: any(w in str(x) for w in writer_filter))]
-
-# ======== HEADER ========
-st.markdown("""
-    <h1 style='text-align:center; color:#f3c623;'>🧽 SpongeBob Episode Insights 📊</h1>
-    <h4 style='text-align:center; color:#007acc;'>Menyelam ke data — mencari harta karun di Bikini Bottom</h4>
-""", unsafe_allow_html=True)
-
-# ======== KPI CARDS ========
+# ================= METRIK RINGKAS =================
 col1, col2, col3 = st.columns(3)
-col1.metric("📺 Total Episode", len(filtered))
-col2.metric("👥 Rata-rata Viewership", f"{filtered['U.S. viewers (millions)'].mean():.2f} juta")
-col3.metric("🗓️ Rentang Tahun", f"{int(filtered['Air_Year'].min())} - {int(filtered['Air_Year'].max())}")
 
-# ======== VISUAL 1: TREND VIEWERSHIP ========
-st.subheader("📈 Tren Rata-rata Viewership per Tahun")
-fig1, ax1 = plt.subplots(figsize=(10, 4))
-avg_view = filtered.groupby("Air_Year")["U.S. viewers (millions)"].mean()
-sns.lineplot(x=avg_view.index, y=avg_view.values, marker="o", color="#f3c623", ax=ax1)
-ax1.set_title("Rata-rata Viewership per Tahun", fontsize=14, color="#2b2d42")
-ax1.set_xlabel("Tahun")
-ax1.set_ylabel("Viewers (juta)")
-st.pyplot(fig1)
+col1.metric("📺 Jumlah Episode", len(df_season))
+col2.metric("⭐ Rata-rata Rating", round(df_season["IMDb"].mean(), 2))
+col3.metric("👀 Rata-rata Penonton (juta)", round(df_season["U.S. viewers (millions)"].mean(), 2))
 
-# ======== VISUAL 2: EPISODE COUNT ========
-st.subheader("📊 Jumlah Episode per Tahun")
-fig2, ax2 = plt.subplots(figsize=(10, 4))
-count_eps = filtered.groupby("Air_Year")["title"].count()
-sns.barplot(x=count_eps.index, y=count_eps.values, color="#00b4d8", ax=ax2)
-ax2.set_title("Jumlah Episode per Tahun", fontsize=14, color="#2b2d42")
-ax2.set_xlabel("Tahun")
-ax2.set_ylabel("Jumlah Episode")
-st.pyplot(fig2)
-
-# ======== VISUAL 3: KARAKTER POPULER ========
-st.subheader("🍍 Top 6 Karakter Berdasarkan Frekuensi")
-char_series = pd.Series([c for sub in filtered["Characters_List"].dropna() for c in sub])
-top_chars = char_series.value_counts().head(6)
-fig3, ax3 = plt.subplots()
-ax3.pie(top_chars.values, labels=top_chars.index, autopct="%1.1f%%", startangle=90, colors=sns.color_palette("pastel"))
-ax3.set_title("Top 6 Karakter")
-st.pyplot(fig3)
-
-# ======== ANOMALI ========
-st.subheader("🔍 Episode Anomali (Viewership > 150% median tahun)")
-anomalies = filtered[filtered["Viewership_Anomaly"] == True]
-st.dataframe(anomalies[["title", "Air_Year", "U.S. viewers (millions)", "Writer(s)"]])
-
-# ======== INSIGHT SECTION ========
 st.markdown("---")
-st.markdown("## 💡 Insight & Rekomendasi")
-st.write("""
-- Tahun paling populer adalah **2003**, dengan rata-rata viewership tertinggi (≈7.6 juta).
-- Tren viewership menurun lebih dari **90%** hingga tahun terakhir.
-- Rekomendasi:
-  - Gunakan episode 2003 sebagai bahan promosi nostalgia.
-  - Telusuri konten dengan anomali positif di tahun-tahun baru sebagai inspirasi.
-""")
 
-st.markdown(
-    "<p style='text-align:center; color:#f3c623;'>© 2025 - Bikini Bottom Data Lab</p>",
-    unsafe_allow_html=True
+# ================= GRAFIK 1: TREND RATING PER EPISODE =================
+st.subheader(f"📊 Rating Tiap Episode - Season {selected_season}")
+
+rating_chart = alt.Chart(df_season).mark_circle(size=100, opacity=0.8).encode(
+    x=alt.X("Episode:O", title="Episode ke-"),
+    y=alt.Y("IMDb:Q", title="Rating IMDb"),
+    tooltip=["Title", "IMDb", "U.S. viewers (millions)"],
+    color=alt.Color("IMDb:Q", scale=alt.Scale(scheme=selected_color))
+).properties(height=400)
+
+st.altair_chart(rating_chart, use_container_width=True)
+
+# ================= GRAFIK 2: TREN PENONTON PER SEASON =================
+st.subheader("👁️ Tren Jumlah Penonton per Season")
+
+avg_viewers = df.groupby("Season")["U.S. viewers (millions)"].mean().reset_index()
+
+fig = px.line(
+    avg_viewers,
+    x="Season",
+    y="U.S. viewers (millions)",
+    markers=True,
+    color_discrete_sequence=["#FFD700"]
+)
+fig.update_layout(
+    template="plotly_dark",
+    plot_bgcolor="rgba(0,0,0,0)",
+    paper_bgcolor="rgba(0,0,0,0)",
+    title_font_color="#FFD700"
+)
+st.plotly_chart(fig, use_container_width=True)
+
+# ================= TABEL EPISODE =================
+st.subheader(f"📜 Daftar Episode Season {selected_season}")
+
+st.dataframe(
+    df_season,
+    hide_index=True,
+    column_order=("Title", "Original air date", "IMDb", "U.S. viewers (millions)"),
+    column_config={
+        "Title": st.column_config.TextColumn("Judul Episode"),
+        "Original air date": st.column_config.TextColumn("Tanggal Tayang"),
+        "IMDb": st.column_config.ProgressColumn("Rating IMDb", format="%.1f", min_value=0, max_value=10),
+        "U.S. viewers (millions)": st.column_config.NumberColumn("Penonton (juta)", format="%.2f")
+    }
 )
 
+# ================= ABOUT =================
+with st.expander("Tentang Dashboard", expanded=False):
+    st.write("""
+        - 🎬 Data diambil dari SpongeBob episode dataset.
+        - 📈 Menampilkan statistik rating dan penonton tiap season.
+        - 🎨 Tema warna bisa diubah untuk menyesuaikan gaya tampilan.
+        - 🧠 Dibuat untuk keperluan UTS Visualisasi Data.
+    """)
