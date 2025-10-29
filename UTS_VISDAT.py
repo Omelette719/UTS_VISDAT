@@ -1,3 +1,4 @@
+# 🧽 UTS_VISDAT_Revisi_v3.py — SpongeBob Episode Analytics (Bikini Bottom Edition + Filter Writer)
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -6,7 +7,7 @@ from datetime import datetime
 
 # === CONFIGURASI HALAMAN ===
 st.set_page_config(page_title="SpongeBob Episode Analytics", page_icon="🪸", layout="wide")
-px.defaults.template = "plotly_white"
+px.defaults.template = "plotly_dark"
 
 # === PALET WARNA “Bikini Bottom” ===
 BKB_BG = "#022F40"      # laut dalam
@@ -15,211 +16,21 @@ BKB_PINK = "#FF8FB1"    # karang pink
 BKB_LIGHT = "#2A9FD6"   # biru langit laut
 
 # === HEADER DASHBOARD ===
-st.markdown("""
-    <style>
-        /* === Background utama === */
-        .stApp {
-            background: linear-gradient(180deg, #FFF8D6 0%, #FFE97D 50%, #FFD54A 100%);
-            background-attachment: fixed;
-            color: #222;
-            font-family: 'Comic Sans MS', 'Trebuchet MS', sans-serif;
-        }
-
-        /* === Sidebar === */
-        section[data-testid="stSidebar"] {
-            background: linear-gradient(180deg, #FFEB99 0%, #E2B664 100%);
-            border-right: 3px solid #A05B2C;
-            box-shadow: 2px 0 12px rgba(0,0,0,0.25);
-            border-top-right-radius: 16px;
-        }
-
-        /* Judul Sidebar */
-        section[data-testid="stSidebar"] h1, 
-        section[data-testid="stSidebar"] h2, 
-        section[data-testid="stSidebar"] h3 {
-            color: #3B2004;
-            text-shadow: 1px 1px 0 #FFF3C4;
-        }
-
-        /* Pilihan dropdown dan checkbox */
-        div[data-baseweb="select"] > div, .stCheckbox {
-            background-color: #FFFBEA !important;
-            border-radius: 8px;
-            border: 1px solid #C6893F !important;
-        }
-
-        /* Tombol */
-        .stButton > button {
-            background: linear-gradient(180deg, #FFD54A 0%, #F9A602 100%);
-            color: #3B2004;
-            font-weight: 600;
-            border-radius: 12px;
-            border: 2px solid #3B2004;
-            box-shadow: 0 3px 0 #3B2004;
-            transition: all 0.25s ease-in-out;
-        }
-        .stButton > button:hover {
-            background: linear-gradient(180deg, #F9A602 0%, #FFD54A 100%);
-            transform: translateY(-3px);
-        }
-
-        /* Metric box */
-        div[data-testid="stMetricValue"] {
-            color: #3B2004 !important;
-        }
-        div[data-testid="stMetric"] {
-            background-color: #FFF5C7;
-            border-radius: 14px;
-            padding: 12px 18px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-            border: 2px solid #FFE97D;
-        }
-
-        /* Chart container */
-        .js-plotly-plot {
-            border-radius: 14px;
-            box-shadow: 0 6px 14px rgba(0,0,0,0.25);
-            background-color: #FFFDF3 !important;
-            padding: 12px;
-            transition: all 0.3s ease-in-out;
-        }
-        .js-plotly-plot:hover {
-            transform: translateY(-3px);
-        }
-
-        /* Scrollbar SpongeBob-style */
-        ::-webkit-scrollbar {
-            width: 10px;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #C6893F;
-            border-radius: 5px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #A05B2C;
-        }
-        ::-webkit-scrollbar-track {
-            background: #FFF8D6;
-        }
-
-        /* Garis pemisah */
-        hr, .stMarkdown hr {
-            border-top: 3px dashed #A05B2C;
-        }
-
-        /* Footer */
-        .stMarkdown div {
-            text-align: center;
-            color: #3B2004;
-            font-weight: 500;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
-st.write("") 
-
-# === GAYA TAMBAHAN: Tema SpongeBob ===
-st.markdown("""
-    <style>
-        /* === Background utama === */
-        .stApp {
-            background: linear-gradient(180deg, #FFEE88 0%, #FFF8D6 50%, #FFD54A 100%);
-            background-attachment: fixed;
-            color: #222;
-            font-family: 'Trebuchet MS', 'Comic Sans MS', sans-serif;
-        }
-
-        /* === Sidebar === */
-        section[data-testid="stSidebar"] {
-            background: linear-gradient(180deg, #FCE77D 0%, #E2B664 100%);
-            border-right: 3px solid #C6893F;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.2);
-        }
-
-        /* Judul Sidebar */
-        section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {
-            color: #3B2004;
-            text-shadow: 1px 1px 0 #FFF3C4;
-        }
-
-        /* Pilihan dropdown dan checkbox */
-        div[data-baseweb="select"] > div, .stCheckbox {
-            background-color: #FFF8E1 !important;
-            border-radius: 8px;
-            border: 1px solid #C6893F !important;
-        }
-
-        /* Tombol */
-        .stButton > button {
-            background: linear-gradient(180deg, #F6C90E 0%, #F9A602 100%);
-            color: black;
-            font-weight: 600;
-            border-radius: 12px;
-            border: 2px solid #3B2004;
-            box-shadow: 0 3px 0 #3B2004;
-            transition: 0.2s ease;
-        }
-        .stButton > button:hover {
-            background: linear-gradient(180deg, #F9A602 0%, #F6C90E 100%);
-            transform: translateY(-2px);
-        }
-
-        /* Metric box */
-        div[data-testid="stMetricValue"] {
-            color: #3B2004 !important;
-        }
-        div[data-testid="stMetricDelta"] {
-            color: #D62828 !important;
-        }
-        div[data-testid="stMetric"] {
-            background-color: #FFF3C4;
-            border-radius: 12px;
-            padding: 10px 15px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-        }
-
-        /* Chart container */
-        .js-plotly-plot {
-            border-radius: 12px;
-            box-shadow: 0 4px 18px rgba(0,0,0,0.3);
-            background-color: #FFFDF3 !important;
-            padding: 8px;
-        }
-
-        /* Scrollbar SpongeBob-style */
-        ::-webkit-scrollbar {
-            width: 10px;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #C6893F;
-            border-radius: 5px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #A05B2C;
-        }
-        ::-webkit-scrollbar-track {
-            background: #FFF8D6;
-        }
-
-        /* Footer */
-        .stMarkdown div {
-            text-align: center;
-        }
-
-        /* Garis pemisah */
-        hr, .stMarkdown hr {
-            border-top: 3px dashed #A05B2C;
-        }
-
-        /* Tooltip, tabel, dan teks info */
-        [data-testid="stMarkdownContainer"] {
-            color: #222;
-        }
-        .stAlert {
-            border-radius: 12px;
-        }
-    </style>
-""", unsafe_allow_html=True)
+st.markdown(
+    f"""
+    <div style="
+        background: linear-gradient(90deg, {BKB_BG} 0%, #074a62 100%);
+        padding: 18px; border-radius: 10px;
+        box-shadow: 0 4px 30px rgba(0,0,0,0.3);
+        color: white;
+    ">
+        <h1 style="margin:6px 0 2px 0; font-family: 'Helvetica Neue', Arial;">🧽 SpongeBob Episode Analytics — Bikini Bottom</h1>
+        <p style="margin:0; opacity:0.85">Dashboard interaktif berdasarkan data episode SpongeBob SquarePants.</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+st.write("")
 
 # === PEMBACAAN DAN PEMBERSIHAN DATA ===
 @st.cache_data(ttl=300)
@@ -310,12 +121,12 @@ def load_and_clean(path="spongebob_episodes.csv"):
 try:
     df = load_and_clean("spongebob_episodes.csv")
 except Exception as e:
-    st.error(f"Error membaca data: {e}")
+    st.error(f"❌ Error membaca data: {e}")
     st.stop()
 
 # === SIDEBAR ===
 with st.sidebar:
-    st.header("Navigasi")
+    st.header("🧭 Navigasi")
 
     season_opts = ["All"] + sorted(df["Season"].dropna().unique().tolist())
     selected_season = st.selectbox("Pilih Season:", season_opts)
@@ -383,7 +194,7 @@ if selected_season == "All":
 else:
     season = int(selected_season)
     season_data = df_filtered[df_filtered["Season"] == season].sort_values("EpisodeOrder")
-    st.subheader(f"Detail Season {season}")
+    st.subheader(f"🪸 Detail Season {season}")
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Jumlah Episode", len(season_data))
@@ -441,7 +252,7 @@ else:
             st.info("Tidak ada data penulis untuk season ini.")
 
     st.markdown("---")
-    st.markdown("### Insight")
+    st.markdown("### 💡 Insight")
     if season_data.empty:
         st.write("Data season kosong — tidak ada insight.")
     else:
@@ -456,6 +267,6 @@ else:
 
 # FOOTER
 st.markdown(
-    "<div style='text-align:center; color:gray; margin-top:18px;'>Made with ❤️ in Bikini Bottom</div>",
+    "<div style='text-align:center; color:gray; margin-top:18px;'>🌴 Made with ❤️ in Bikini Bottom</div>",
     unsafe_allow_html=True
 )
